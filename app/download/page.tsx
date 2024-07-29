@@ -20,14 +20,15 @@ const Downloaders: { [key: string]: Downloader } = {
     "google": GetGoogleContent3,
     "hackernews": GetYcRecentStories
 };
-export function Download() {
+
+function Download() {
     const [results, setResults] = useState<{ [key: string]: WebSearchResult[] }>({});
     const [queries, setQueries] = useState<string[]>([]);
     const [query, setQuery] = useState<string>("");
     const [count, setCount] = useState(100);
     const [searchPeriod, setSearchPeriod] = useState<number>(7);
     const [downloading, startDownload] = useAsyncTransition();
-    const {isLoading} = useVectorSearch();
+    const { isLoading } = useVectorSearch();
     const onStart = useCallback(() => {
         setResults({});
         startDownload(async () => {
@@ -72,8 +73,8 @@ export function Download() {
         setQueries(queries => [...queries.filter(q => q !== v)])
     }, []);
 
-    if(isLoading) {
-        return <LoadingScreen/>;
+    if (isLoading) {
+        return <LoadingScreen />;
     }
 
     return (
@@ -109,8 +110,8 @@ export function Download() {
 
 export default function DownloadPage() {
     return (
-            <WorkerProvider>
-                <Download/>
-            </WorkerProvider>
+        <WorkerProvider>
+            <Download />
+        </WorkerProvider>
     )
 }
