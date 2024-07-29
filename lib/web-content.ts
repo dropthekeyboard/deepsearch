@@ -1,6 +1,7 @@
-import puppeteer from 'puppeteer-extra';
+import puppeteer, {Browser} from 'puppeteer-core';
 import { getUserAgent } from './userAgents';
 import { htmlToText } from 'html-to-text';
+import chromium from '@sparticuz/chromium-min';
 
 // Use the stealth plugin to avoid detection
 
@@ -13,15 +14,24 @@ async function fetchPlainTextContentBrowser(url: string): Promise<string> {
     return plainText;
 }
 
+let browser:Browser|null = null;
+
+
 async function fetchPageContent(url: string): Promise<string> {
-    const browser = await puppeteer.launch({
-        headless: true, // Set to false if you want to see the browser in action
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            `--user-agent=${getUserAgent()}`
-        ]
-    });
+    
+    if(!browser) {
+        browser = await puppeteer.launch({
+            headless: chromium.headless, // Set to false if you want to see the browser in action
+            executablePath: await chromium.executablePath(
+                `https://fritzprix.github.io/assets/chromium-126-pack.tar`
+              ),
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                `--user-agent=${getUserAgent()}`
+            ]
+        });
+    }
 
     const page = await browser.newPage();
 

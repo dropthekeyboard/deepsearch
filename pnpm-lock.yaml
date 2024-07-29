@@ -35,6 +35,9 @@ dependencies:
   '@radix-ui/react-toast':
     specifier: ^1.2.1
     version: 1.2.1(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1)(react@18.3.1)
+  '@sparticuz/chromium-min':
+    specifier: ^126.0.0
+    version: 126.0.0
   '@types/html-to-text':
     specifier: ^9.0.4
     version: 9.0.4
@@ -1139,6 +1142,16 @@ packages:
     dependencies:
       domhandler: 5.0.3
       selderee: 0.11.0
+    dev: false
+
+  /@sparticuz/chromium-min@126.0.0:
+    resolution: {integrity: sha512-Wn51LRKXHwBEfm6OWnZmcMVkzWg1TQvSMsG0H5p6UFrOcM6GUjGLxty9Er863EuJC2gwIEc6kNr8h/mhT893oA==}
+    engines: {node: '>= 16'}
+    dependencies:
+      follow-redirects: 1.15.6
+      tar-fs: 3.0.6
+    transitivePeerDependencies:
+      - debug
     dev: false
 
   /@swc/counter@0.1.3:
