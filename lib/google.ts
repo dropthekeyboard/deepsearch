@@ -4,6 +4,7 @@ import * as cheerio from 'cheerio';
 // Assuming we have a function to get user agent
 import { getUserAgent } from '@/lib/userAgents';
 import { WebSearchResult } from '@/types';
+import { extractDateFromSnippet } from './utils';
 interface Url {
   type: string;
   template: string;
@@ -269,7 +270,6 @@ async function fetchSearchResults(params: CustomSearchQueryParams): Promise<Cust
   const apiKey = process.env.GSEARCH_API_KEY; // 실제 API 키로 대체
   const cx = process.env.GSEARCH_CSX; // 실제 검색 엔진 ID로 대체
   const queryParams = convertParamsToRecord({...params, key:apiKey, cx});
-  console.log(queryParams);
   const baseUrl = 'https://customsearch.googleapis.com/customsearch/v1';
   const queryString = new URLSearchParams(queryParams).toString();
   const response = await fetch(`${baseUrl}?${queryString}`)
@@ -277,5 +277,43 @@ async function fetchSearchResults(params: CustomSearchQueryParams): Promise<Cust
 }
 
 
+async function GetGoogleContentClient(query: string, count: number, periodInDays: number = 7): Promise<WebSearchResult[]|Error> {
+  let results: WebSearchResult[] = [];
+  if(count > 100) {
+      return new Error("count should be lower than or equal to 100");
+  }
+  let fetchedCount = 0;
+  let searchParam: CustomSearchQueryParams = {q: query, num:10, start:0, dateRestrict:`d${periodInDays}`};
+  while(fetchedCount < count) {
+      const result = await fetchSearchResults(searchParam);
+      const list = result.items.map(({link, title, snippet }) => {
+          // snippet contains the time information at the beginning somehting like "6 days ago ... 5 AI Startups include.." or "Jul 5, 2024 ... 60 Growing AI Companies"
+          // so parse date from the text
+          const date = extractDateFromSnippet(snippet);
+          return {
+              query,
+              title,
+              url: link,
+              description: snippet,
+              contentDate: date,
+              searchDate: new Date(),
+              source: "google",
+          } as WebSearchResult;
+      });
+      console.log(list);
+      fetchedCount += list.length;
+      const next = result.queries.nextPage;
+      if(next) {
+          searchParam = {...searchParam , start: next[0].startIndex};
+      } else {
+          break;
+      }
+      results = [...results, ...list];
+  }
+
+  return results;
+}
+
+
 export type {CustomSearchQueryParams};
-export { search, fetchSearchResults };
+export { search, fetchSearchResults, GetGoogleContentClient };

@@ -1,7 +1,17 @@
 import puppeteer from 'puppeteer-extra';
 import { getUserAgent } from './userAgents';
+import { htmlToText } from 'html-to-text';
 
 // Use the stealth plugin to avoid detection
+
+
+async function fetchPlainTextContentBrowser(url: string): Promise<string> {
+    const htmlContent = await fetchPageContent(url);
+    const plainText = htmlToText(htmlContent, {
+        wordwrap: 130
+    });
+    return plainText;
+}
 
 async function fetchPageContent(url: string): Promise<string> {
     const browser = await puppeteer.launch({
@@ -56,4 +66,4 @@ async function fetchPageContent(url: string): Promise<string> {
     }
 }
 
-export { fetchPageContent };
+export { fetchPageContent, fetchPlainTextContentBrowser };

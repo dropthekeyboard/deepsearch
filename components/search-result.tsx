@@ -1,4 +1,3 @@
-import { fetchPlainTextContent } from "@/app/download/action";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useWorker } from "@/context/WorkerContext";
 import { useAsyncTransition } from "@/hooks/use-async";
@@ -14,6 +13,7 @@ import { Progress } from "./ui/progress";
 import { ScrollArea } from "./ui/scroll-area";
 import { useVectorSearch } from "@/hooks/use-vector-search";
 import { LoadingScreen } from "./loading";
+import { fetchPlainTextContent } from "@/app/download/action";
 
 const BATCH_SIZE = 10;
 const DELAY_BETWEEN_BATCHES = 100;
