@@ -1,7 +1,7 @@
-import puppeteer, { Browser } from "puppeteer-core";
-import { getUserAgent } from "./userAgents";
-import { htmlToText } from "html-to-text";
 import chromium from "@sparticuz/chromium-min";
+import { htmlToText } from "html-to-text";
+import puppeteer from "puppeteer-core";
+import { getUserAgent } from "./userAgents";
 
 // Use the stealth plugin to avoid detection
 
@@ -23,6 +23,8 @@ async function fetchPageContent(url: string): Promise<string> {
     args: [
       ...chromium.args,
       "--hide-scrollbars",
+      // '--no-sandbox',
+      // '--disable-setuid-sandbox',
       "--disable-web-security",
       `--user-agent=${getUserAgent()}`,
     ],
