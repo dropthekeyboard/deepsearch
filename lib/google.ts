@@ -269,10 +269,11 @@ async function fetchSearchResults(params: CustomSearchQueryParams): Promise<Cust
   const apiKey = process.env.GSEARCH_API_KEY; // 실제 API 키로 대체
   const cx = process.env.GSEARCH_CSX; // 실제 검색 엔진 ID로 대체
   const queryParams = convertParamsToRecord({...params, key:apiKey, cx});
+  console.log(queryParams);
   const baseUrl = 'https://customsearch.googleapis.com/customsearch/v1';
   const queryString = new URLSearchParams(queryParams).toString();
-  const response = await axios.get(`${baseUrl}?${queryString}`);
-  return response.data;
+  const response = await fetch(`${baseUrl}?${queryString}`)
+  return response.json();
 }
 
 
