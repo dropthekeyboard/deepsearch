@@ -4,7 +4,7 @@ import { WebSearchResult } from "@/types";
 import puppeteer from 'puppeteer';
 import { getYcRecentStories } from "@/lib/yc";
 import { htmlToText } from 'html-to-text';
-import { fetchPageContent } from "@/lib/web-content";
+import { fetchPageContent, fetchPageContentAlt } from "@/lib/web-content";
 import { extractDateFromSnippet } from "@/lib/utils";
 
 async function GetGoogleContent(query: string, count: number): Promise<WebSearchResult[]> {
@@ -130,7 +130,7 @@ async function GetYcRecentStories(query: string, count: number, periodInDays: nu
 
 
 async function fetchPlainTextContent(url: string): Promise<string> {
-    const htmlContent = await fetchPageContent(url);
+    const htmlContent = await fetchPageContentAlt(url);
     const plainText = htmlToText(htmlContent, {
         wordwrap: 130
     });
