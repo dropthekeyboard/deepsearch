@@ -30,10 +30,6 @@ async function fetchPageContent(url: string): Promise<string> {
     ],
   });
 
-
-
-
-
   const page = await browser.newPage();
 
   // Set a custom user-agent
