@@ -16,6 +16,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, Dr
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
 import { LoadingScreen } from "./loading";
+import useWebSearchResults from "@/hooks/use-web-search";
 
 interface RelevantChunkItemProps {
     result: SearchResult;
@@ -82,6 +83,7 @@ function ResearchView() {
     const [context, setContext] = useState<string>("");
     const { ready, upsertItem, getItem } = useCache<string>({ ttl: -1 });
     const {isLoading: isVsLoading, search} = useVectorSearch();
+    const {getResultById} = useWebSearchResults();
 
     useEffect(() => {
         if (ready) {
@@ -113,23 +115,28 @@ function ResearchView() {
     const fetchSearchResults = useCallback(async (query: string) => {
         const searchResults = await search(query, 100);
         const srcChunksMap = new Map<string, RelevantSummaryItemProps>();
-        searchResults.forEach((sr) => {
+        searchResults.forEach(async (sr) => {
             const { name } = sr.object;
             const c: IndexedChunkData = JSON.parse(name);
-            const { id } = c;
-            if (id) {
-                const record = srcChunksMap.get(id);
+            const { parentId } = c;
+            if (parentId) {
+                const record = srcChunksMap.get(parentId);
                 if (record) {
-                    srcChunksMap.set(id, { ...record, chunks: [...record.chunks, c], searchResults: [...record.searchResults, sr] });
+                    srcChunksMap.set(parentId, { ...record, chunks: [...record.chunks, c], searchResults: [...record.searchResults, sr] });
                 } else {
-                    srcChunksMap.set(id, { source: { ...c }, chunks: [c], searchResults: [sr] })
+                    const source = await getResultById(parentId);
+                    if(source) {
+                        srcChunksMap.set(parentId, { source, chunks: [c], searchResults: [sr] })
+                    } else {
+                        console.log("invalid state");
+                    }
                 }
             }
         })
         return srcChunksMap;
-    }, [search]);
+    }, [search, getResultById]);
 
-    const { data, isLoading } = useSWR(searchQuery, async () => await fetchSearchResults(searchQuery), {dedupingInterval: 10000});
+    const { data, isLoading } = useSWR(searchQuery, async () => await fetchSearchResults(searchQuery));
     useEffect(() => {
         if (data && !isLoading) {
             // convert data into markdown table format

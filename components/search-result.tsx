@@ -1,29 +1,26 @@
+import { createRetrievalTask, fetchPlainTextContentLegacy, getRetrievalStatus } from "@/app/download/action";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { useWorker } from "@/context/WorkerContext";
 import { useAsyncTransition } from "@/hooks/use-async";
+import { useVectorSearch } from "@/hooks/use-vector-search";
 import useWebSearchResults from "@/hooks/use-web-search";
-import { chopText, cleanText, createId, removePath, removeUrl } from "@/lib/utils";
-import { VectorSearchAPI } from "@/lib/vector-search";
-import { WebSearchResult } from "@/types";
+import { db } from "@/lib/db";
+import { chopText, cleanText, removePath, removeUrl } from "@/lib/utils";
+import { IndexedChunkData, WebSearchResult } from "@/types";
 import crypto from 'crypto';
 import { format } from 'date-fns';
 import { AlertCircle, Ban, Calendar, CheckCircle, Cloud, Loader2, Search } from "lucide-react";
-import { memo, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Progress } from "./ui/progress";
 import { ScrollArea } from "./ui/scroll-area";
-import { useVectorSearch } from "@/hooks/use-vector-search";
-import { LoadingScreen } from "./loading";
-import { fetchPlainTextContent } from "@/app/download/action";
 
 const BATCH_SIZE = 10;
 const DELAY_BETWEEN_BATCHES = 100;
 const MAX_LENGTH = 5000;
 const MIN_LENGTH = 100;
-const CONCURRENT_PROC_COUNT = 1;
+const MAX_TRIAL_COUNT = 10;
 
 interface SearchItemProps {
     data: WebSearchResult;
-    ping?: boolean;
     pong?: () => void;
 }
 
@@ -79,113 +76,151 @@ function SearchItemMin({ data }: SearchItemProps) {
     );
 }
 
+async function fetchPlainTextContent(url: string): Promise<string | null> {
+    try {
+        let result = await createRetrievalTask(url);
+        let trial = 0;
+        while ((result.status === 'pending') && (trial < MAX_TRIAL_COUNT)) {
+            const { id } = result;
+            result = await getRetrievalStatus({ id }) || { ...result, status: 'error' };
+            trial++;
+            // give delay 3000 ms + 10% of random offset
+            const delay = 3000 + Math.random() * 300;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        if (result.status === "error") {
+            return null;
+        }
+        return result.content || "";
+    } catch (e) {
+        console.log(e);
+    }
+    return null;
+}
 
-function SearchItem({ data, ping, pong }: SearchItemProps) {
-    const [loadingContent, startLoadingContent] = useAsyncTransition();
-    const [content, setContent] = useState<string>();
+
+function SearchItem({ data, pong }: SearchItemProps) {
     const [error, setError] = useState<any>();
-    const { ready, getResultById, upsertResult } = useWebSearchResults();
-    const [savedData, setSavedData] = useState<WebSearchResult | null>(null);
-    const [indexedData, setIndexedData] = useState<WebSearchResult | null>(null);
-    const { add, embed } = useVectorSearch();
+    const [item, setItem] = useState<WebSearchResult | null>(null);
+    const { add, embed, isLoading } = useVectorSearch();
     const [indexingProgress, setIndexingProgress] = useState(0);
-    const [isIndexing, setIsIndexing] = useState(false);
-
-    const indexVectorSearch = useCallback(async () => {
-        if (!savedData?.content || savedData.content.trim() === "") {
-            console.log("Content is undefined or empty. Skipping indexing.");
-            setIsIndexing(false);
-            setIndexingProgress(100);
-            pong?.();
-            return;
-        }
-        if (savedData.isIndexed) {
-            setIsIndexing(false);
-            setIndexingProgress(100);
-            setIndexedData(savedData);
-            pong?.();
-            return;
-        }
-
-        setIsIndexing(true);
-        const chunks = chopText(cleanText(removePath(removeUrl(savedData.content))), 4, 1)
-            .map(cleanText)
-            .filter(Boolean)
-            .filter(c => c.length < MAX_LENGTH)
-            .filter(c => c.length > MIN_LENGTH);
-        const totalChunks = chunks.length;
-
-        for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
-            await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
-            const batch = chunks.slice(i, i + BATCH_SIZE);
-            await Promise.all(batch.map(async (chunk) => {
-                const embedding = await embed(chunk);
-                const vobject = { ...savedData, chunk };
-                const name = JSON.stringify(vobject);
-                const id = getUniqueId(name);
-                await add({ id, name }, embedding);
-            }));
-            setIndexingProgress(Math.min(((i + BATCH_SIZE) / totalChunks) * 100, 100));
-        }
-        setIndexedData({ ...savedData, isIndexed: true });
-        setIsIndexing(false);
-        pong?.();
-    }, [savedData, add, embed, pong]);
-
-    const saveContent = useCallback(async () => {
-        let c;
-        const id = createId(data);
-        try {
-            const saved = await getResultById(id);
-            if (saved) {
-                setContent(saved.content);
-                setSavedData(saved);
-            } else {
-                console.log("download request :", data);
-                c = await fetchPlainTextContent(data.url);
-                if (c) {
-                    setContent(c);
-                }
-                const toSave = { ...data, content: c, id };
-                await upsertResult(toSave);
-                setSavedData(toSave);
-            }
-        } catch (e) {
-            setError(e);
-        }
-    }, [data, getResultById, upsertResult]);
+    const { ready, getResultById } = useWebSearchResults();
+    const [retrieving, startRetrieval] = useAsyncTransition();
+    const [indexing, startIndexing] = useAsyncTransition();
 
     useEffect(() => {
-        if (error) {
-            pong?.();
+        if (data && ready && !item) {
+            getResultById(data.id).then(v => {
+                if (v) {
+                    console.log("hit:", v);
+                    setItem(v);
+                } else {
+                    setItem(data);
+                }
+            })
+            setItem(data);
+        }
+    }, [data, ready, getResultById, item]);
+
+    useEffect(() => {
+
+        if (item) {
+            const { id } = item;
+            if (id) {
+                const upsertItem = async () => {
+                    const existingItem = await db.webSearchResults.get(id)
+                    if (!existingItem) {
+                        await db.webSearchResults.add(item, item.id);
+                    } else if (existingItem !== item) {
+                        await db.webSearchResults.put(item, item.id);
+                    } else {
+                        console.log("not updated");
+                    }
+                };
+                upsertItem();
+            } else {
+                console.log("no ID");
+            }
+        }
+    }, [item]);
+
+    useEffect(() => {
+        if (pong && !isLoading && item) {
+            const { url, isRetrieved } = item;
+            if (!isRetrieved && !retrieving) {
+                startRetrieval(async () => {
+                    try {
+                        const content = await fetchPlainTextContentLegacy(url) || "";
+                        setItem(prev => prev ? { ...prev, content, isRetrieved: true } : prev);
+                    } catch (e) {
+                        setItem(prev => prev ? { ...prev, content:"", isRetrieved: true } : prev);
+                        setError(e);
+                    }
+                });
+            }
+        }
+    }, [pong, isLoading, item, embed, add, retrieving, startRetrieval]);
+
+    useEffect(() => {
+        if (pong && !isLoading && item) {
+            const { isIndexed, content, isRetrieved } = item;
+            if (!isIndexed && !indexing && isRetrieved) {
+                startIndexing(async () => {
+                    if (content && content.length > 0) {
+                        try {
+                            const chunks = chopText(cleanText(removePath(removeUrl(content))), 4, 1)
+                                .map(cleanText)
+                                .filter(Boolean)
+                                .filter(c => c.length < MAX_LENGTH)
+                                .filter(c => c.length > MIN_LENGTH);
+                            const totalChunks = chunks.length;
+
+                            for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
+                                await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+                                const batch = chunks.slice(i, i + BATCH_SIZE);
+                                await Promise.all(batch.map(async (chunk) => {
+                                    const embedding = await embed(chunk);
+                                    const {id: parentId, url, source } = item;
+                                    const vobject:IndexedChunkData = { parentId, url, chunk, source };
+                                    const name = JSON.stringify(vobject);
+                                    const id = getUniqueId(name);
+                                    await add({ id, name }, embedding);
+                                }));
+                                console.log('batch:', i);
+                                setIndexingProgress(Math.min(((i + BATCH_SIZE) / totalChunks) * 100, 100));
+                            }
+                            setItem(prev => prev ? { ...prev, isIndexed: true } : prev);
+                        } catch (e) {
+                            console.log("", e);
+                            setError(e);
+                        } finally {
+                            pong();
+                        }
+                    } else {
+                        console.log("no content");
+                        pong();
+                    }
+                });
+            }
+            // try retrieva the content
+
+        }
+    }, [pong, isLoading, item, embed, add, indexing, startIndexing]);
+
+
+
+    useEffect(() => {
+        if (error && pong) {
+            pong();
         }
     }, [error, pong])
 
-    useEffect(() => {
-        if (ready && !savedData) {
-            startLoadingContent(saveContent);
-        }
-    }, [ready, saveContent, startLoadingContent, savedData]);
-
-    useEffect(() => {
-        if (savedData && !isIndexing && ping && !indexedData) {
-            indexVectorSearch().catch(console.error).then(() => {
-                setSavedData(prev => prev ? { ...prev, isIndexed: true } : prev);
-            });
-        }
-    }, [savedData, indexVectorSearch, isIndexing, ping, indexedData, pong]);
-
-    useEffect(() => {
-        if (indexedData) {
-            upsertResult(indexedData);
-        }
-    }, [indexedData, upsertResult]);
 
     const formatDate = (date: Date | null) => {
         if (!date) return 'N/A';
         return format(date, 'MMM d, yyyy');
     };
-    
+
 
     return (
         <div className="flex flex-col p-4 mb-4 shadow-md rounded-lg hover:shadow-lg transition-shadow duration-300">
@@ -206,7 +241,7 @@ function SearchItem({ data, ping, pong }: SearchItemProps) {
                     <span>Searched: {formatDate(data.searchDate)}</span>
                 </div>
             </div>
-            {isIndexing ? (
+            {indexing ? (
                 <div className="mt-2">
                     <div className="flex justify-between items-center mb-1">
                         <span className="text-sm font-medium">Indexing Progress</span>
@@ -215,7 +250,7 @@ function SearchItem({ data, ping, pong }: SearchItemProps) {
                     <Progress value={indexingProgress} className="w-full" />
                 </div>
             ) : (
-                indexedData && (
+                item && item.isIndexed && (
                     <div className="mt-2 flex items-center text-green-500">
                         <CheckCircle className="w-4 h-4 mr-2" />
                         <span className="text-sm">Indexing Complete</span>
@@ -225,7 +260,7 @@ function SearchItem({ data, ping, pong }: SearchItemProps) {
             {/* Content fetching state and local sync indicator */}
             <div className="flex flex-row items-center justify-between">
                 <div className="mt-2 flex items-center">
-                    {loadingContent && (
+                    {retrieving && (
                         <div className="flex items-center text-blue-500">
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             <span className="text-xs">Loading</span>
@@ -237,13 +272,13 @@ function SearchItem({ data, ping, pong }: SearchItemProps) {
                             <span className="text-xs">Error</span>
                         </div>
                     )}
-                    {!loadingContent && !error && content === undefined && (
+                    {!retrieving && !error && item && item.content && item.content.length === 0 && (
                         <div className="flex items-center text-gray-500">
                             <Ban className="w-4 h-4 mr-2" />
                             <span className="text-xs">No content</span>
                         </div>
                     )}
-                    {content && (
+                    {item && item.content && (
                         <div className="flex items-center text-green-500">
                             <CheckCircle className="w-4 h-4 mr-2" />
                             <span className="text-xs">Loaded</span>
@@ -252,12 +287,12 @@ function SearchItem({ data, ping, pong }: SearchItemProps) {
                 </div>
                 {/* Local sync indicator */}
                 <div className="flex items-center">
-                    {savedData && (
+                    {item && item.isRetrieved && (
                         <div className="flex items-center text-blue-500 mr-2" title="Synced locally">
                             <Cloud className="w-4 h-4" />
                         </div>
                     )}
-                    {isIndexing && (
+                    {indexing && (
                         <div className="flex items-center text-yellow-500" title="Indexing">
                             <Loader2 className="w-4 h-4 animate-spin" />
                         </div>
@@ -266,13 +301,13 @@ function SearchItem({ data, ping, pong }: SearchItemProps) {
             </div>
 
             {/* Accordion for content display */}
-            {content && (
+            {item && item.content && (
                 <Accordion type="single" collapsible className="w-full mt-2">
                     <AccordionItem value="content">
                         <AccordionTrigger>View Content</AccordionTrigger>
                         <AccordionContent>
                             <ScrollArea className="h-80 font-thin text-pretty">
-                                {content}
+                                {item.content}
                             </ScrollArea>
                         </AccordionContent>
                     </AccordionItem>
@@ -282,7 +317,6 @@ function SearchItem({ data, ping, pong }: SearchItemProps) {
     );
 }
 
-const MemoizedSearchItem = memo(SearchItem);
 function SearchResultBlock({ results, query }: { results: WebSearchResult[], query: string }) {
     const [processingComplete, setProcessingComplete] = useState(false);
     const [processing, setProcessing] = useState(0);
@@ -290,14 +324,19 @@ function SearchResultBlock({ results, query }: { results: WebSearchResult[], que
 
     const handlePong = useCallback((index: number) => {
         console.log(`Item ${index} completed`);
-        if(index < results.length) {
-            if(processing === index) {
-                setProcessing(index + 1);
+        setProcessing(prev => {
+            if (prev < results.length) {
+                console.log('pong', prev);
+                return prev + 1;
+            } else {
+                setProcessingComplete(true);
+                return prev;
             }
-        } else {
-            setProcessingComplete(true);
-        }
-    }, [results, processing]);
+        });
+    }, [results]);
+
+    console.log('proc:', processing);
+
 
 
     const progressPercentage = (processing / results.length) * 100;
@@ -313,15 +352,15 @@ function SearchResultBlock({ results, query }: { results: WebSearchResult[], que
             </p>
             <Progress value={progressPercentage} className="mb-4" />
             {results.map((item, index) => (
-                <MemoizedSearchItem
+                <SearchItem
                     key={index}
                     data={item}
-                    ping={processing === index}
-                    pong={() => handlePong(index)}
+                    pong={processing === index ? () => handlePong(index) : undefined}
                 />
             ))}
         </div>
     );
 }
 
-export { SearchResultBlock, SearchItemMin };
+export { SearchItemMin, SearchResultBlock };
+

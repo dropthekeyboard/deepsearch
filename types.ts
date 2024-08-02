@@ -1,15 +1,15 @@
 interface Content {
-    id: string;
-    source: string;
-    url: string;
-    title: string;
-    content: string;
+  id: string;
+  source: string;
+  url: string;
+  title: string;
+  content: string;
 }
 
 interface CachedObject<T> {
-    id: string;
-    data: T;
-    syncedAt?: number;
+  id: string;
+  data: T;
+  syncedAt?: number;
 }
 
 type AsyncFunction<T extends any[] = any[], R = any> = (...args: T) => Promise<R>;
@@ -28,30 +28,43 @@ interface WorkerResponse<T extends AsyncFunction> {
 type AsyncAPI = Record<string, AsyncFunction>;
 
 interface WebSearchResult {
-    id?: string;
-    query: string;
-    source: string;
-    url: string;
-    title: string;
-    description: string;
-    content?: string;
-    contentDate: Date|null;
-    searchDate: Date;
-    isIndexed: boolean;
+  id: string;
+  query: string;
+  source: string;
+  url: string;
+  title: string;
+  description: string;
+  content?: string;
+  contentDate: Date | null;
+  searchDate: Date;
+  isRetrieved?: boolean;
+  isIndexed?: boolean;
 }
 
-interface IndexedChunkData extends WebSearchResult {
+
+interface RetrievalResult {
+  url: string;
+  id: string;
+  status: 'pending' | 'error' | 'success'
+  content?: string;
+}
+
+interface IndexedChunkData {
+  url: string;
+  source: string;
+  parentId: string;
   chunk: string;
 }
 
 
 export type {
-    Content,
-    AsyncFunction,
-    WorkerMessage,
-    IndexedChunkData,
-    WorkerResponse,
-    AsyncAPI,
-    CachedObject,
-    WebSearchResult
+  Content,
+  AsyncFunction,
+  WorkerMessage,
+  RetrievalResult,
+  IndexedChunkData,
+  WorkerResponse,
+  AsyncAPI,
+  CachedObject,
+  WebSearchResult
 };
