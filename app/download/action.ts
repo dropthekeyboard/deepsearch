@@ -1,5 +1,4 @@
-
-export const dynamic = 'force-dynamic'; // static by default, unless reading the request
+"use server"
 
 import { inngest } from "@/inngest/client";
 import { CustomSearchQueryParams, fetchSearchResults, search } from "@/lib/google";

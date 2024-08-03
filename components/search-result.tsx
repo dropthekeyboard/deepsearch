@@ -94,6 +94,20 @@ async function fetchPlainTextContent(url: string): Promise<string | null> {
     return null;
 }
 
+async function fetchPlainTextContentSF(url: string): Promise<string | null> {
+    try {
+        const params = new URLSearchParams({url})
+        const result = await fetch(`/api/down?${params.toString()}`, {method:'GET'})
+        if(result && result.ok) {
+            const {content} = await result.json();
+            return content || "";
+        }
+    } catch (e) {
+        console.log(e);
+    }
+    return null;
+}
+
 
 function SearchItem({ data, pong }: SearchItemProps) {
     const [error, setError] = useState<any>();
@@ -146,7 +160,7 @@ function SearchItem({ data, pong }: SearchItemProps) {
             if (!isRetrieved && !retrieving) {
                 startRetrieval(async () => {
                     try {
-                        const content = await fetchPlainTextContentLegacy(url) || "";
+                        const content = await fetchPlainTextContentSF(url) || "";
                         setItem(prev => prev ? { ...prev, content, isRetrieved: true } : prev);
                     } catch (e) {
                         setItem(prev => prev ? { ...prev, content: "", isRetrieved: true } : prev);
