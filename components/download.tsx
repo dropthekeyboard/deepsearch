@@ -10,6 +10,8 @@ import { useVectorSearch } from "@/hooks/use-vector-search";
 import { WebSearchResult } from "@/types";
 import { XCircle } from "lucide-react";
 import { ChangeEvent, useCallback, useState } from "react";
+import { Slider } from "@/components/ui/slider";
+import { useToast } from "./ui/use-toast";
 
 
 type Downloader = (query: string, count: number, periodInDays?: number) => Promise<WebSearchResult[] | Error>
@@ -29,6 +31,7 @@ function DownloadView() {
     const [searchPeriod, setSearchPeriod] = useState<number>(7);
     const [downloading, startDownload] = useAsyncTransition();
     const { isLoading } = useVectorSearch();
+    const { toast } = useToast();
     console.log(results);
     const onStart = useCallback(() => {
         setResults({});
@@ -55,9 +58,8 @@ function DownloadView() {
         })
     }, [queries, count, startDownload, searchPeriod]);
 
-    const onPeriodChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-        const { target } = e;
-        setSearchPeriod(Number(target.value));
+    const onPeriodChange = useCallback((v: number[]) => {
+        setSearchPeriod(Number(v[0]));
     }, []);
 
     const onQueryChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -66,8 +68,24 @@ function DownloadView() {
     }, []);
 
     const onAddQuery = useCallback((e: any) => {
-        setQueries(qs => [...qs, query]);
-        setQuery("");
+        const trimmed = query.trim()
+        if (trimmed.length > 0) {
+            setQueries(qs => { 
+                const lcased = trimmed.toLowerCase();
+                if(qs.map(s => s.toLowerCase()).includes(lcased)) {
+                    toast({
+                        description: `${trimmed}는 이미 선택된 검색어입니다`
+                    });
+                    return qs;
+                }
+                setQuery("");
+                return [...qs, trimmed]; 
+            });
+        } else {
+            toast({
+                description: "검색어를 입력하세요"
+            })
+        }
     }, [query]);
 
     const onDeleteQuery = useCallback((v: string) => {
@@ -79,20 +97,22 @@ function DownloadView() {
     }
 
     return (
-        <div className="w-full flex flex-col items-center p-24">
+        <div className="w-full flex flex-col items-center pt-8">
             <div className="space-y-4 w-full max-w-md">
-                <div className="grid grid-cols-5 gap-4 items-center">
-                    <Label htmlFor="date" className="col-span-1 text-right">PERIOD</Label>
-                    <Input id="period" type="number" className="col-span-4" defaultValue={searchPeriod} onChange={onPeriodChange}></Input>
+                <div className="flex flex-col items-start space-y-2">
+                    <Label htmlFor="date" className="text-right">{`SEARCH PERIOD: ${searchPeriod} days`}</Label>
+                    <Slider id="date" defaultValue={[searchPeriod]} max={30} min={1} step={1} onValueChange={onPeriodChange} />
                 </div>
-                <div className="grid grid-cols-5 gap-4 items-center">
-                    <Label htmlFor="count" className="col-span-1 text-right">NUMBER OF ITEM</Label>
-                    <Input id="count" type="number" value={count} className="col-span-4" onChange={(e) => { setCount(Number(e.target.value)) }} />
+                <div className="flex flex-col items-start space-y-2">
+                    <Label htmlFor="count" className="text-right">{`NUMBER OF ITEM: ${count}`}</Label>
+                    <Slider id="count" defaultValue={[count]} max={100} min={10} step={1} onValueChange={v => setCount(v[0])} />
                 </div>
-                <div className="grid grid-cols-5 gap-4 items-center">
-                    <Label htmlFor="count" className="col-span-1 text-right">QUERY</Label>
-                    <Input id="count" type="text" placeholder="Enter search query" className="col-span-3" value={query} onChange={onQueryChange} />
-                    <Button className="col-span-1" onClick={onAddQuery}>ADD</Button>
+                <div className="flex flex-col items-start space-y-2 w-full">
+                    <Label htmlFor="q" className="text-right">QUERY</Label>
+                    <div className="grid grid-cols-8 gap-4 w-full">
+                        <Input id="q" type="text" placeholder="Enter search query" className="col-span-5" value={query} onChange={onQueryChange} />
+                        <Button className="col-span-3" onClick={onAddQuery}>ADD</Button>
+                    </div>
                 </div>
                 {queries.map((query, id) => (
                     <div className="flex flex-row items-center border-solid border rounded-full pl-2 justify-between" key={id}>{query}

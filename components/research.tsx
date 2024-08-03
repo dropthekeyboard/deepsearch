@@ -1,3 +1,5 @@
+"use client"
+
 import { VectorObject } from "@/hooks/use-client-vector-search";
 import useCache from "@/hooks/use-local-cache";
 import { useVectorSearch } from "@/hooks/use-vector-search";
@@ -8,6 +10,7 @@ import { SearchResult } from "client-vector-search";
 import { Edit, MessageCircle, Save } from "lucide-react";
 import React, { useCallback, useEffect, useState } from 'react';
 import useSWRImmutable from "swr/immutable";
+import { encodingForModel } from "js-tiktoken";
 import ChatUI from "./chat";
 import { LoadingScreen } from "./loading";
 import { SearchItemMin } from "./search-result";
@@ -17,6 +20,18 @@ import { Card, CardContent } from "./ui/card";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "./ui/drawer";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
+import { Slider } from "./ui/slider";
+import { useToast } from "./ui/use-toast";
+import Markdown from "react-markdown";
+
+
+const encoding = encodingForModel("gpt-4o")
+
+function countTokens(text: string) {
+    // Initialize the tokenizer
+    const tokens = encoding.encode(text);
+    return tokens.length
+}
 
 interface RelevantChunkItemProps {
     result: SearchResult;
@@ -79,11 +94,14 @@ function ResearchView() {
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [key, setKey] = useState<string>("");
     const [isEditing, setIsEditing] = useState<boolean>(false);
+    const [topK, setTopK] = useState<number>(50);
     const [tempKey, setTempKey] = useState<string>("");
     const [context, setContext] = useState<string>("");
+    const [tokenCount, setTokenCount] = useState<number>();
     const { ready, upsertItem, getItem } = useCache<string>({ ttl: -1 });
-    const {isLoading: isVsLoading, search} = useVectorSearch();
-    const {getResultById} = useWebSearchResults();
+    const { isLoading: isVsLoading, search } = useVectorSearch();
+    const { getResultById } = useWebSearchResults();
+    const { toast } = useToast();
 
     useEffect(() => {
         if (ready) {
@@ -92,6 +110,31 @@ function ResearchView() {
             })
         }
     }, [ready, getItem]);
+
+    useEffect(() => {
+        setTokenCount(countTokens(context));
+    }, [context]);
+
+    useEffect(() => {
+        if (tokenCount) {
+            console.log("token count: ", tokenCount);
+            if (!(key && key.length > 0)) {
+                if (tokenCount > 7000) {
+                    toast({
+                        description: <Markdown>{`context information is too large for llama-3.1-8b (8K) : ${tokenCount} tokens. you can switch the model to **gpt-4o-mini** by entering the *[OpenAI API Key](https://platform.openai.com/settings/profile?tab=api-keys)*`}</Markdown>,
+                        variant:'destructive',
+                        title:'Too large information'
+                    })
+                    setTopK(prev => {
+                        if (prev > 10) {
+                            return prev - 10;
+                        }
+                        return prev;
+                    })
+                }
+            }
+        }
+    }, [tokenCount]);
 
 
     const handleEditClick = useCallback(() => {
@@ -107,11 +150,10 @@ function ResearchView() {
         }
     }, [setKey, tempKey, ready, upsertItem]);
 
-
     const fetchSearchResults = useCallback(async (query: string) => {
-        const searchResults = await search(query, 100);
+        const searchResults = await search(query, topK);
         const srcChunksMap = new Map<string, RelevantSummaryItemProps>();
-        for(const sr of searchResults) {
+        for (const sr of searchResults) {
             const { name } = sr.object;
             const c: IndexedChunkData = JSON.parse(name);
             const { parentId } = c;
@@ -121,7 +163,7 @@ function ResearchView() {
                     srcChunksMap.set(parentId, { ...record, chunks: [...record.chunks, c], searchResults: [...record.searchResults, sr] });
                 } else {
                     const source = await getResultById(parentId);
-                    if(source) {
+                    if (source) {
                         srcChunksMap.set(parentId, { source, chunks: [c], searchResults: [sr] })
                     } else {
                         console.log("invalid state");
@@ -132,7 +174,7 @@ function ResearchView() {
         return srcChunksMap;
     }, [search, getResultById]);
 
-    const { data, isLoading } = useSWRImmutable(searchQuery, async () => await fetchSearchResults(searchQuery));
+    const { data, isLoading } = useSWRImmutable(searchQuery && { searchQuery, topK }, async () => await fetchSearchResults(searchQuery));
     useEffect(() => {
         if (data && !isLoading) {
             // convert data into markdown table format
@@ -153,15 +195,10 @@ function ResearchView() {
     const onSearchQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const { target: { value } } = e;
         setSearchQuery(value);
-        if(!value || value.length === 0) {
-            console.log('invalidate');
-        }
     }, []);
 
-
-
     if (isVsLoading) {
-        return <LoadingScreen/>
+        return <LoadingScreen />
     }
 
     return (
@@ -198,9 +235,13 @@ function ResearchView() {
                     </div>
                 </div>
             </div>
-            <div className="flex items-center space-x-4 mt-16">
-                <Label className="font-semibold whitespace-nowrap">Search Query</Label>
+            <div className="flex flex-col items-start space-y-4 mt-16">
+                <Label className="font-semibold whitespace-nowrap">SEMANTIC SEARCH QUERY</Label>
                 <Input className="flex-grow" value={searchQuery} onChange={onSearchQueryChange} placeholder="Enter your search query" />
+            </div>
+            <div className="flex flex-col items-start space-y-4 mt-16">
+                <Label className="font-semibold whitespace-nowrap">{`SEARCH COUNT (TopK): ${topK}`}</Label>
+                <Slider value={[topK]} max={100} min={10} step={10} onValueChange={v => setTopK(v[0])} />
             </div>
             <div className="space-y-6">
                 {isLoading ? (

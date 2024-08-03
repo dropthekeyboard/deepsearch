@@ -12,6 +12,7 @@ module.exports = {
       sharp$: false,
       "onnxruntime-node$": false,
     };
+
     return config;
   },
   experimental: {

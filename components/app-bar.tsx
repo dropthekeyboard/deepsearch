@@ -1,9 +1,10 @@
+"use client"
 import { ThemeToggleAction } from "./theme-toggle";
 
 function AppBar() {
     return (
         <nav className="shadow-md">
-            <div className="flex justify-evenly items-center h-12">
+            <div className="flex justify-between items-center h-12 p-4">
                 <a href="/" className="text-xl font-bold">
                     Deep Search
                 </a>

@@ -1,3 +1,4 @@
+"use client"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAsyncTransition } from "@/hooks/use-async";
 import { useVectorSearch } from "@/hooks/use-vector-search";
@@ -94,7 +95,7 @@ async function fetchPlainTextContent(url: string): Promise<string | null> {
     return null;
 }
 
-async function fetchPlainTextContentSF(url: string): Promise<string | null> {
+async function fetchPlainTextContentEF(url: string): Promise<string | null> {
     try {
         const params = new URLSearchParams({url})
         const result = await fetch(`/api/down?${params.toString()}`, {method:'GET'})
@@ -160,7 +161,7 @@ function SearchItem({ data, pong }: SearchItemProps) {
             if (!isRetrieved && !retrieving) {
                 startRetrieval(async () => {
                     try {
-                        const content = await fetchPlainTextContentSF(url) || "";
+                        const content = await fetchPlainTextContentEF(url) || "";
                         setItem(prev => prev ? { ...prev, content, isRetrieved: true } : prev);
                     } catch (e) {
                         setItem(prev => prev ? { ...prev, content: "", isRetrieved: true } : prev);

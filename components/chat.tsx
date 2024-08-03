@@ -1,3 +1,4 @@
+"use client"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ function ChatUI({id, apiKey, context}:ChatUIProps) {
       context,
     }
   });
+  
   const { toast } = useToast();
 
   const scrollToBottom = () => {
