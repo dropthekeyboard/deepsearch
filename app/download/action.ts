@@ -1,13 +1,16 @@
+
+export const dynamic = 'force-dynamic'; // static by default, unless reading the request
+
 "use server"
-import { CustomSearchQueryParams, fetchSearchResults, search } from "@/lib/google";
-import { RetrievalResult, WebSearchResult } from "@/types";
-import puppeteer from 'puppeteer';
-import { getYcRecentStories } from "@/lib/yc";
-import { htmlToText } from 'html-to-text';
-import { fetchPageContent, fetchPageContentAlt } from "@/lib/web-content";
-import { extractDateFromSnippet, generateUniqueKey } from "@/lib/utils";
-import { kv } from "@vercel/kv";
 import { inngest } from "@/inngest/client";
+import { CustomSearchQueryParams, fetchSearchResults, search } from "@/lib/google";
+import { extractDateFromSnippet, generateUniqueKey } from "@/lib/utils";
+import { fetchPageContent } from "@/lib/web-content";
+import { getYcRecentStories } from "@/lib/yc";
+import { RetrievalResult, WebSearchResult } from "@/types";
+import { kv } from "@vercel/kv";
+import { htmlToText } from 'html-to-text';
+import puppeteer from 'puppeteer';
 
 const ONE_SEC_IN_MS = 1000;
 const MAX_INNGEST_WAIT = 60 * ONE_SEC_IN_MS;
@@ -198,4 +201,4 @@ async function fetchPlainTextContentLegacy(url: string): Promise<string> {
 }
 
 
-export { GetGoogleContent, GetGoogleContent2, GetGoogleContent3, GetYcRecentStories, createRetrievalTask, getRetrievalStatus, fetchPlainTextContentLegacy };
+export { createRetrievalTask, fetchPlainTextContentLegacy, GetGoogleContent, GetGoogleContent2, GetGoogleContent3, getRetrievalStatus, GetYcRecentStories };

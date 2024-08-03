@@ -146,7 +146,7 @@ function SearchItem({ data, pong }: SearchItemProps) {
             if (!isRetrieved && !retrieving) {
                 startRetrieval(async () => {
                     try {
-                        const content = await fetchPlainTextContent(url) || "";
+                        const content = await fetchPlainTextContentLegacy(url) || "";
                         setItem(prev => prev ? { ...prev, content, isRetrieved: true } : prev);
                     } catch (e) {
                         setItem(prev => prev ? { ...prev, content: "", isRetrieved: true } : prev);
