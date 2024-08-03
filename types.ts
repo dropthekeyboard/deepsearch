@@ -43,6 +43,7 @@ interface WebSearchResult {
 
 
 interface RetrievalResult {
+  createdAt: number;
   url: string;
   id: string;
   status: 'pending' | 'error' | 'success'

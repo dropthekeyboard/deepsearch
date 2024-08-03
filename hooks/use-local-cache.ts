@@ -69,7 +69,6 @@ function useCache<T>(props?: IndexDBHookProps<T>): UseIndexedDBReturn<T> {
         syncedAt: Date.now(),
       };
       await db.cachedObjects.put(container);
-      console.log('updated', key);
 
       if (callbacks?.onPush) {
         setTimeout(async () => {

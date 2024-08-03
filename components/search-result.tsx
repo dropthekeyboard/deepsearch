@@ -24,10 +24,6 @@ interface SearchItemProps {
     pong?: () => void;
 }
 
-interface SearchResultBlockProps {
-    results: WebSearchResult[];
-    query: string;
-}
 
 function getUniqueId(veryLongJson: string): number {
     // Step 1: Create a hash of the JSON string
@@ -46,7 +42,7 @@ function getUniqueId(veryLongJson: string): number {
 
 
 function SearchItemMin({ data }: SearchItemProps) {
-    const { content } = data;
+    const { source, description, title, url, contentDate, searchDate } = data;
 
     const formatDate = (date: Date | null) => {
         if (!date) return 'N/A';
@@ -55,21 +51,21 @@ function SearchItemMin({ data }: SearchItemProps) {
 
     return (
         <div className="flex flex-col p-4 mb-4 shadow-md rounded-lg hover:shadow-lg transition-shadow duration-300">
-            <a href={data.url} target="_blank" rel="noopener noreferrer" className="group">
-                <h3 className="text-lg font-semibold group-hover:underline mb-1">{data.title}</h3>
-                <p className="text-sm mb-2">{data.source}</p>
-                <p className="text-sm mb-2">{data.description}</p>
+            <a href={url} target="_blank" rel="noopener noreferrer" className="group">
+                <h3 className="text-lg font-semibold group-hover:underline mb-1">{title}</h3>
+                <p className="text-sm mb-2">{source}</p>
+                <p className="text-sm mb-2">{description}</p>
             </a>
 
             {/* Dates display */}
             <div className="flex justify-between items-center text-xs text-gray-500 mb-2">
                 <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-1" />
-                    <span>Content: {formatDate(data.contentDate)}</span>
+                    <span>Content: {formatDate(contentDate)}</span>
                 </div>
                 <div className="flex items-center">
                     <Search className="w-4 h-4 mr-1" />
-                    <span>Searched: {formatDate(data.searchDate)}</span>
+                    <span>Searched: {formatDate(searchDate)}</span>
                 </div>
             </div>
         </div>
@@ -104,7 +100,7 @@ function SearchItem({ data, pong }: SearchItemProps) {
     const [item, setItem] = useState<WebSearchResult | null>(null);
     const { add, embed, isLoading } = useVectorSearch();
     const [indexingProgress, setIndexingProgress] = useState(0);
-    const { ready, getResultById } = useWebSearchResults();
+    const { ready, getResultById, upsertResult } = useWebSearchResults();
     const [retrieving, startRetrieval] = useAsyncTransition();
     const [indexing, startIndexing] = useAsyncTransition();
 
@@ -128,11 +124,11 @@ function SearchItem({ data, pong }: SearchItemProps) {
             const { id } = item;
             if (id) {
                 const upsertItem = async () => {
-                    const existingItem = await db.webSearchResults.get(id)
+                    const existingItem = await getResultById(id)
                     if (!existingItem) {
-                        await db.webSearchResults.add(item, item.id);
+                        await upsertResult(item);
                     } else if (existingItem !== item) {
-                        await db.webSearchResults.put(item, item.id);
+                        await upsertResult(item);
                     } else {
                         console.log("not updated");
                     }
@@ -150,10 +146,10 @@ function SearchItem({ data, pong }: SearchItemProps) {
             if (!isRetrieved && !retrieving) {
                 startRetrieval(async () => {
                     try {
-                        const content = await fetchPlainTextContentLegacy(url) || "";
+                        const content = await fetchPlainTextContent(url) || "";
                         setItem(prev => prev ? { ...prev, content, isRetrieved: true } : prev);
                     } catch (e) {
-                        setItem(prev => prev ? { ...prev, content:"", isRetrieved: true } : prev);
+                        setItem(prev => prev ? { ...prev, content: "", isRetrieved: true } : prev);
                         setError(e);
                     }
                 });
@@ -180,25 +176,19 @@ function SearchItem({ data, pong }: SearchItemProps) {
                                 const batch = chunks.slice(i, i + BATCH_SIZE);
                                 await Promise.all(batch.map(async (chunk) => {
                                     const embedding = await embed(chunk);
-                                    const {id: parentId, url, source } = item;
-                                    const vobject:IndexedChunkData = { parentId, url, chunk, source };
+                                    const { id: parentId, url, source } = item;
+                                    const vobject: IndexedChunkData = { parentId, url, chunk, source };
                                     const name = JSON.stringify(vobject);
                                     const id = getUniqueId(name);
                                     await add({ id, name }, embedding);
                                 }));
-                                console.log('batch:', i);
                                 setIndexingProgress(Math.min(((i + BATCH_SIZE) / totalChunks) * 100, 100));
+                                setItem(prev => prev ? { ...prev, isIndexed: true } : prev);
                             }
-                            setItem(prev => prev ? { ...prev, isIndexed: true } : prev);
                         } catch (e) {
                             console.log("", e);
                             setError(e);
-                        } finally {
-                            pong();
                         }
-                    } else {
-                        console.log("no content");
-                        pong();
                     }
                 });
             }
@@ -207,20 +197,37 @@ function SearchItem({ data, pong }: SearchItemProps) {
         }
     }, [pong, isLoading, item, embed, add, indexing, startIndexing]);
 
-
+    const hasNoContent = useCallback(() => {
+        
+        return !retrieving && !error && item && item.isRetrieved && (item.content ? item.content.length === 0 : true);
+    }, [retrieving, item, error])
 
     useEffect(() => {
-        if (error && pong) {
-            pong();
+        if (pong) {
+            if (error) {
+                pong();
+            } else if (item) {
+                console.log('pong');
+                const { isIndexed, isRetrieved, content } = item;
+                if (isRetrieved) {
+                    if (content && content.length > 0) {
+                        if (isIndexed) {
+                            pong();
+                        }
+                    } else {
+                        pong();
+                    }
+
+                }
+            }
         }
-    }, [error, pong])
+    }, [error, pong, item]);
 
 
     const formatDate = (date: Date | null) => {
         if (!date) return 'N/A';
         return format(date, 'MMM d, yyyy');
     };
-
 
     return (
         <div className="flex flex-col p-4 mb-4 shadow-md rounded-lg hover:shadow-lg transition-shadow duration-300">
@@ -272,12 +279,10 @@ function SearchItem({ data, pong }: SearchItemProps) {
                             <span className="text-xs">Error</span>
                         </div>
                     )}
-                    {!retrieving && !error && item && item.content && item.content.length === 0 && (
-                        <div className="flex items-center text-gray-500">
-                            <Ban className="w-4 h-4 mr-2" />
-                            <span className="text-xs">No content</span>
-                        </div>
-                    )}
+                    {hasNoContent() && (<div className="flex items-center text-gray-500">
+                        <Ban className="w-4 h-4 mr-2" />
+                        <span className="text-xs">No content</span>
+                    </div>)}
                     {item && item.content && (
                         <div className="flex items-center text-green-500">
                             <CheckCircle className="w-4 h-4 mr-2" />
@@ -324,20 +329,13 @@ function SearchResultBlock({ results, query }: { results: WebSearchResult[], que
 
     const handlePong = useCallback((index: number) => {
         console.log(`Item ${index} completed`);
-        setProcessing(prev => {
-            if (prev < results.length) {
-                console.log('pong', prev);
-                return prev + 1;
-            } else {
-                setProcessingComplete(true);
-                return prev;
-            }
-        });
+        if (index < results.length) {
+            setProcessing(index + 1);
+        } else {
+            setProcessingComplete(true);
+        }
+
     }, [results]);
-
-    console.log('proc:', processing);
-
-
 
     const progressPercentage = (processing / results.length) * 100;
 

@@ -4,7 +4,7 @@ import * as cheerio from 'cheerio';
 // Assuming we have a function to get user agent
 import { getUserAgent } from '@/lib/userAgents';
 import { WebSearchResult } from '@/types';
-import { extractDateFromSnippet } from './utils';
+import { extractDateFromSnippet, generateUniqueKey } from './utils';
 interface Url {
   type: string;
   template: string;
@@ -195,6 +195,7 @@ async function* search({
 
         if (advanced) {
           yield {
+            id: generateUniqueKey(`google.${link}.${description}`),
             url: link.attr('href') as string,
             title: title.text(),
             description: description,
@@ -266,26 +267,34 @@ function convertParamsToRecord(params: any): Record<string, string> {
   return record;
 }
 
-async function fetchSearchResults(params: CustomSearchQueryParams): Promise<CustomSearchAPIResponse> {
+async function fetchSearchResults(params: CustomSearchQueryParams): Promise<CustomSearchAPIResponse|null> {
   const apiKey = process.env.GSEARCH_API_KEY; // 실제 API 키로 대체
   const cx = process.env.GSEARCH_CSX; // 실제 검색 엔진 ID로 대체
   const queryParams = convertParamsToRecord({...params, key:apiKey, cx});
   const baseUrl = 'https://customsearch.googleapis.com/customsearch/v1';
   const queryString = new URLSearchParams(queryParams).toString();
   const response = await fetch(`${baseUrl}?${queryString}`)
-  return response.json();
+  if(response.ok) {
+    return response.json();
+  } else {
+    return null;
+  }
+  
 }
 
 
-async function GetGoogleContentClient(query: string, count: number, periodInDays: number = 7): Promise<WebSearchResult[]|Error> {
+async function GetGoogleContentClient(query: string, count: number, periodInDays: number = 7): Promise<WebSearchResult[]> {
   let results: WebSearchResult[] = [];
   if(count > 100) {
-      return new Error("count should be lower than or equal to 100");
+      throw new Error("count should be lower than or equal to 100");
   }
   let fetchedCount = 0;
   let searchParam: CustomSearchQueryParams = {q: query, num:10, start:0, dateRestrict:`d${periodInDays}`};
   while(fetchedCount < count) {
       const result = await fetchSearchResults(searchParam);
+      if(!result) {
+        throw new Error("fail to get response");
+      }
       const list = result.items.map(({link, title, snippet }) => {
           // snippet contains the time information at the beginning somehting like "6 days ago ... 5 AI Startups include.." or "Jul 5, 2024 ... 60 Growing AI Companies"
           // so parse date from the text

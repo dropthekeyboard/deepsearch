@@ -1,13 +1,15 @@
 import { VectorObject } from "@/hooks/use-client-vector-search";
 import useCache from "@/hooks/use-local-cache";
 import { useVectorSearch } from "@/hooks/use-vector-search";
+import useWebSearchResults from "@/hooks/use-web-search";
 import { IndexedChunkData, WebSearchResult } from "@/types";
 import { Label } from "@radix-ui/react-label";
 import { SearchResult } from "client-vector-search";
 import { Edit, MessageCircle, Save } from "lucide-react";
 import React, { useCallback, useEffect, useState } from 'react';
-import useSWR from "swr";
+import useSWRImmutable from "swr/immutable";
 import ChatUI from "./chat";
+import { LoadingScreen } from "./loading";
 import { SearchItemMin } from "./search-result";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -15,8 +17,6 @@ import { Card, CardContent } from "./ui/card";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "./ui/drawer";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
-import { LoadingScreen } from "./loading";
-import useWebSearchResults from "@/hooks/use-web-search";
 
 interface RelevantChunkItemProps {
     result: SearchResult;
@@ -93,10 +93,6 @@ function ResearchView() {
         }
     }, [ready, getItem]);
 
-    const onSearchQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const { target: { value } } = e;
-        setSearchQuery(value);
-    }, []);
 
     const handleEditClick = useCallback(() => {
         setTempKey(key);
@@ -115,7 +111,7 @@ function ResearchView() {
     const fetchSearchResults = useCallback(async (query: string) => {
         const searchResults = await search(query, 100);
         const srcChunksMap = new Map<string, RelevantSummaryItemProps>();
-        searchResults.forEach(async (sr) => {
+        for(const sr of searchResults) {
             const { name } = sr.object;
             const c: IndexedChunkData = JSON.parse(name);
             const { parentId } = c;
@@ -132,11 +128,11 @@ function ResearchView() {
                     }
                 }
             }
-        })
+        }
         return srcChunksMap;
     }, [search, getResultById]);
 
-    const { data, isLoading } = useSWR(searchQuery, async () => await fetchSearchResults(searchQuery));
+    const { data, isLoading } = useSWRImmutable(searchQuery, async () => await fetchSearchResults(searchQuery));
     useEffect(() => {
         if (data && !isLoading) {
             // convert data into markdown table format
@@ -153,6 +149,16 @@ function ResearchView() {
             })));
         }
     }, [data, isLoading]);
+
+    const onSearchQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const { target: { value } } = e;
+        setSearchQuery(value);
+        if(!value || value.length === 0) {
+            console.log('invalidate');
+        }
+    }, []);
+
+
 
     if (isVsLoading) {
         return <LoadingScreen/>

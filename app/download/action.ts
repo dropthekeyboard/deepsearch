@@ -7,9 +7,13 @@ import { htmlToText } from 'html-to-text';
 import { fetchPageContent, fetchPageContentAlt } from "@/lib/web-content";
 import { extractDateFromSnippet, generateUniqueKey } from "@/lib/utils";
 import { kv } from "@vercel/kv";
+import { inngest } from "@/inngest/client";
 
+const ONE_SEC_IN_MS = 1000;
+const MAX_INNGEST_WAIT = 60 * ONE_SEC_IN_MS;
 
 async function GetGoogleContent(query: string, count: number): Promise<WebSearchResult[]> {
+    
     console.log(`${query} / ${count}`)
     const results = search({
         term: query,
@@ -84,15 +88,18 @@ async function GetGoogleContent2(query: string, count: number): Promise<WebSearc
 }
 
 
-async function GetGoogleContent3(query: string, count: number, periodInDays: number = 7): Promise<WebSearchResult[] | Error> {
+async function GetGoogleContent3(query: string, count: number, periodInDays: number = 7): Promise<WebSearchResult[]> {
     let results: WebSearchResult[] = [];
     if (count > 100) {
-        return new Error("count should be lower than or equal to 100");
+        throw new Error("count should be lower than or equal to 100");
     }
     let fetchedCount = 0;
     let searchParam: CustomSearchQueryParams = { q: query, num: 10, start: 0, dateRestrict: `d${periodInDays}` };
     while (fetchedCount < count) {
         const result = await fetchSearchResults(searchParam);
+        if(!result) {
+            throw new Error("no response");
+        }
         const list = result.items.map(({ link, title, snippet }) => {
             // snippet contains the time information at the beginning somehting like "6 days ago ... 5 AI Startups include.." or "Jul 5, 2024 ... 60 Growing AI Companies"
             // so parse date from the text
@@ -140,53 +147,50 @@ async function GetYcRecentStories(query: string, count: number, periodInDays: nu
 
 async function getRetrievalStatus({ id }: { id: string }): Promise<RetrievalResult | null> {
     const result = await kv.get<RetrievalResult>(id);
+    if(result) {
+        // do with result.createdAt :number to expire and put the state into error
+        if(result.createdAt) {
+            const currentTime = Date.now();
+            if (currentTime - result.createdAt > MAX_INNGEST_WAIT) {
+                // If it's expired, update the status to error
+                const update: RetrievalResult = { ...result, status: 'error' };
+                await kv.set<RetrievalResult>(id, update);
+                return update;
+            }
+        } else {
+            // it's old format and we consider this as error
+            const update: RetrievalResult = {...result, status:'error'};
+            await kv.set<RetrievalResult>(id, update);
+            return update;
+        }
+    }
+    
     return result;
 }
 
-import { inngest } from "@/inngest/client";
-
-const downloadContentDirect = async (pendingResult: RetrievalResult) => {
-    const { id, url } = pendingResult;
-    if (id) {
-        try {
-            console.log("download requested : ", url);
-            const html = await fetchPageContent(url);
-            const content = htmlToText(html, { wordwrap: 130 });
-            console.log("retrieved: ", content);
-            const successfulResult: RetrievalResult = { url, id, status: "success", content };
-            await kv.set<RetrievalResult>(id, successfulResult);
-            console.log(successfulResult);
-            return successfulResult;
-        } catch (e) {
-            await kv.set<RetrievalResult>(id, { id, url, status: 'error' });
-            throw e;
-        }
-    }
-    throw new Error("invalid data format");
-}
 
 
 async function createRetrievalTask(url: string): Promise<RetrievalResult> {
     const key = generateUniqueKey(url);
-    // const hit = await kv.get<RetrievalResult>(key);
-    // if (hit) {
-    //     console.log("", hit);
-    //     return hit;
-    // }
-    // we need something to prevent overloading inngest
+    const hit = await kv.get<RetrievalResult>(key);
+    if (hit && hit.status === 'error') {
+        console.log("", hit);
+        return hit;
+    }
     const result: RetrievalResult = {
         url,
         id: key,
-        status: "pending"
+        status: "pending",
+        createdAt: Date.now()
     };
     kv.set(key, result);
     inngest.send({ name: "download/url", data: result });
-    return { url, id: key, status: 'pending' };
+    return result;
 }
 
 
 async function fetchPlainTextContentLegacy(url: string): Promise<string> {
-    const htmlContent = await fetchPageContentAlt(url);
+    const htmlContent = await fetchPageContent(url);
     const plainText = htmlToText(htmlContent, {
         wordwrap: 130
     });

@@ -71,7 +71,6 @@ const useVectorSearch = ({ initialObjects }: UseVectorSearchProps) => {
             })
           );
           const index = newIndex(objectsWithEmbeddings);
-          console.log("index", index);
           setIndex(index);
         } catch (error) {
           console.error("Error initializing:", error);
