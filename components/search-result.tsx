@@ -1,4 +1,3 @@
-import { createRetrievalTask, fetchPlainTextContentLegacy, getRetrievalStatus } from "@/app/download/action";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAsyncTransition } from "@/hooks/use-async";
 import { useVectorSearch } from "@/hooks/use-vector-search";
@@ -12,6 +11,7 @@ import { AlertCircle, Ban, Calendar, CheckCircle, Cloud, Loader2, Search } from 
 import { useCallback, useEffect, useState } from "react";
 import { Progress } from "./ui/progress";
 import { ScrollArea } from "./ui/scroll-area";
+import { createRetrievalTask, getRetrievalStatus } from "@/app/action";
 
 const BATCH_SIZE = 10;
 const DELAY_BETWEEN_BATCHES = 100;

@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster"
+import { AppBar } from "@/components/app-bar";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -11,20 +13,6 @@ export const metadata: Metadata = {
   description: "this is what all investors have wanted to have so long",
 };
 
-function Navbar() {
-  return (
-    <nav className="shadow-md">
-      <div className="flex justify-evenly items-center h-12">
-          <a href="/" className="text-xl font-bold">
-            AI Strategic Investment
-          </a>
-          <Link href="/download">
-            Download
-          </Link>
-        </div>
-    </nav>
-  );
-}
 
 export default function RootLayout({
   children,
@@ -34,9 +22,18 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-          <Navbar />
-          {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AppBar />
+          <main>
+            {children}
+          </main>
           <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
