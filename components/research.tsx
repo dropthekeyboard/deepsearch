@@ -92,16 +92,14 @@ function RelevantSummaryItem({ source, chunks, searchResults }: RelevantSummaryI
 
 function ResearchView() {
     const [searchQuery, setSearchQuery] = useState<string>("");
-    const [key, setKey] = useState<string>("");
-    const [isEditing, setIsEditing] = useState<boolean>(false);
     const [topK, setTopK] = useState<number>(50);
-    const [tempKey, setTempKey] = useState<string>("");
     const [context, setContext] = useState<string>("");
     const [tokenCount, setTokenCount] = useState<number>();
-    const { ready, upsertItem, getItem } = useCache<string>({ ttl: -1 });
     const { isLoading: isVsLoading, search } = useVectorSearch();
     const { getResultById } = useWebSearchResults();
     const { toast } = useToast();
+    const [key, setKey] = useState<string>("");
+    const { ready, getItem } = useCache<string>({ ttl: -1 });
 
     useEffect(() => {
         if (ready) {
