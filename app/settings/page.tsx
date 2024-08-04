@@ -1,8 +1,11 @@
 "use client"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
+import { useAsyncTransition } from "@/hooks/use-async";
 import useCache from "@/hooks/use-local-cache";
-import { Edit, Save } from "lucide-react";
+import { db } from "@/lib/db";
+import { Edit, Loader2, Save, Trash2Icon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 export default function SettingPage() {
@@ -10,6 +13,9 @@ export default function SettingPage() {
     const [tempKey, setTempKey] = useState<string>("");
     const [key, setKey] = useState<string>("");
     const { ready, upsertItem, getItem } = useCache<string>({ ttl: -1 });
+    const [clearing, startClearing] = useAsyncTransition();
+    const {toast} = useToast();
+
 
     useEffect(() => {
         if (ready) {
@@ -29,12 +35,23 @@ export default function SettingPage() {
         setIsEditing(false);
         if (ready) {
             upsertItem('apikey', tempKey);
+            toast({description:'API키가 저장되었습니다.'});
         }
     }, [setKey, tempKey, ready, upsertItem]);
 
+    const clearIndexed = useCallback(async () => {
+        if (db.isOpen()) {
+            startClearing(async () => {
+                await db.vectorIndex.clear();
+                await db.webSearchResults.clear();
+                toast({description:'데이터 삭제 완료'});
+            })
+        }
+    }, [db, startClearing]);
+
     return (
-        <div className="flex flex-col items-center justify-center p-12 w-full">
-            <div className="flex flex-col w-[50vw] border border-solid rounded-l-xl p-2 space-y-1">
+        <div className="flex flex-col items-center justify-center p-12 space-y-2">
+            <div className="flex flex-col w-[50vw] border border-solid rounded-xl p-2 space-y-1">
                 <a className="text-pretty" href="https://platform.openai.com/settings/profile?tab=api-keys">OPENAI API-KEY</a>
                 <div className="flex flex-row items-center justify-center space-x-1 w-full">
                     {isEditing ? (
@@ -63,6 +80,12 @@ export default function SettingPage() {
                         </div>
                     )}
                 </div>
+            </div>
+            <div className="flex flex-row items-center justify-between w-[50vw] p-2 border border-solid rounded-xl">
+                Clear Indexed Content
+                <Button onClick={clearIndexed} variant={'destructive'} size={'icon'} disabled={clearing}>
+                    {clearing ? <Loader2 className="animate-spin"></Loader2> : <Trash2Icon className="w-4 h-4" />}
+                </Button>
             </div>
         </div>
     );
