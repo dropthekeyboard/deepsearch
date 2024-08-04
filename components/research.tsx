@@ -137,19 +137,6 @@ function ResearchView() {
     }, [tokenCount]);
 
 
-    const handleEditClick = useCallback(() => {
-        setTempKey(key);
-        setIsEditing(true);
-    }, [key]);
-
-    const handleSaveClick = useCallback(() => {
-        setKey(tempKey);
-        setIsEditing(false);
-        if (ready) {
-            upsertItem('apikey', tempKey);
-        }
-    }, [setKey, tempKey, ready, upsertItem]);
-
     const fetchSearchResults = useCallback(async (query: string) => {
         const searchResults = await search(query, topK);
         const srcChunksMap = new Map<string, RelevantSummaryItemProps>();
@@ -203,38 +190,6 @@ function ResearchView() {
 
     return (
         <main className="container mx-auto py-8 space-y-8">
-            <div className="absolute top-16 left-8 flex items-center space-x-2">
-                <div className="flex flex-col">
-                    <a className="text-pretty" href="https://platform.openai.com/settings/profile?tab=api-keys">OPENAI API-KEY</a>
-                    <div className="flex flex-row items-center justify-center space-x-1">
-                        {isEditing ? (
-                            <>
-                                <Input
-                                    value={tempKey}
-                                    onChange={(e) => setTempKey(e.target.value)}
-                                    placeholder="Enter key"
-                                    className="w-40"
-                                />
-                                <Button onClick={handleSaveClick} size="icon">
-                                    <Save className="h-4 w-4" />
-                                </Button>
-                            </>
-                        ) : (
-                            <>
-                                <Input
-                                    value={key}
-                                    readOnly
-                                    disabled
-                                    className="w-40"
-                                />
-                                <Button onClick={handleEditClick} size="icon">
-                                    <Edit className="h-4 w-4" />
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </div>
             <div className="flex flex-col items-start space-y-4 mt-16">
                 <Label className="font-semibold whitespace-nowrap">SEMANTIC SEARCH QUERY</Label>
                 <Input className="flex-grow" value={searchQuery} onChange={onSearchQueryChange} placeholder="Enter your search query" />

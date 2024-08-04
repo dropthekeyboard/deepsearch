@@ -74,7 +74,8 @@ function DownloadView() {
                 const lcased = trimmed.toLowerCase();
                 if(qs.map(s => s.toLowerCase()).includes(lcased)) {
                     toast({
-                        description: `${trimmed}는 이미 선택된 검색어입니다`
+                        description: `${trimmed}는 이미 선택된 검색어입니다`,
+                        variant:'destructive'
                     });
                     return qs;
                 }
