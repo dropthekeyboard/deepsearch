@@ -3,7 +3,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useAsyncTransition } from "@/hooks/use-async";
 import { useVectorSearch } from "@/hooks/use-vector-search";
 import useWebSearchResults from "@/hooks/use-web-search";
-import { db } from "@/lib/db";
 import { chopText, cleanText, removePath, removeUrl } from "@/lib/utils";
 import { IndexedChunkData, WebSearchResult } from "@/types";
 import crypto from 'crypto';
@@ -12,13 +11,11 @@ import { AlertCircle, Ban, Calendar, CheckCircle, Cloud, Loader2, Search } from 
 import { useCallback, useEffect, useState } from "react";
 import { Progress } from "./ui/progress";
 import { ScrollArea } from "./ui/scroll-area";
-import { createRetrievalTask, getRetrievalStatus } from "@/app/action";
 
 const BATCH_SIZE = 10;
 const DELAY_BETWEEN_BATCHES = 100;
 const MAX_LENGTH = 5000;
 const MIN_LENGTH = 100;
-const MAX_TRIAL_COUNT = 10;
 
 interface SearchItemProps {
     data: WebSearchResult;
@@ -43,7 +40,7 @@ function getUniqueId(veryLongJson: string): number {
 
 
 function SearchItemMin({ data }: SearchItemProps) {
-    const { source, description, title, url, contentDate, searchDate } = data;
+    const { source, description, title, url, contentDate, searchDate, query } = data;
 
     const formatDate = (date: Date | null) => {
         if (!date) return 'N/A';
@@ -51,56 +48,36 @@ function SearchItemMin({ data }: SearchItemProps) {
     };
 
     return (
-        <div className="flex flex-col p-4 mb-4 shadow-md rounded-lg hover:shadow-lg transition-shadow duration-300">
+        <div className="flex flex-col pt-4 mb-4 shadow-md rounded-lg hover:shadow-lg transition-shadow duration-300">
             <a href={url} target="_blank" rel="noopener noreferrer" className="group">
-                <h3 className="text-lg font-semibold group-hover:underline mb-1">{title}</h3>
-                <p className="text-sm mb-2">{source}</p>
-                <p className="text-sm mb-2">{description}</p>
+                <div className="text-lg font-semibold group-hover:underline mb-1">{title}</div>
+                <div className="text-sm mb-2">{source}</div>
             </a>
-
+            <ScrollArea className="text-sm mb-2 h-24">{description}</ScrollArea>
             {/* Dates display */}
-            <div className="flex justify-between items-center text-xs text-gray-500 mb-2">
+            <div className="flex justify-between items-center text-xs mb-2">
                 <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-1" />
                     <span>Content: {formatDate(contentDate)}</span>
                 </div>
-                <div className="flex items-center">
-                    <Search className="w-4 h-4 mr-1" />
-                    <span>Searched: {formatDate(searchDate)}</span>
+                <div className="flex flex-col space-y-2">
+                    <div className="font-light text-xs">{`"${query}"`}</div>
+                    <div className="flex items-center">
+                        <Search className="w-4 h-4 mr-1" />
+                        <span>Searched: {formatDate(searchDate)}</span>
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
 
-async function fetchPlainTextContent(url: string): Promise<string | null> {
-    try {
-        let result = await createRetrievalTask(url);
-        let trial = 0;
-        while ((result.status === 'pending') && (trial < MAX_TRIAL_COUNT)) {
-            const { id } = result;
-            result = await getRetrievalStatus({ id }) || { ...result, status: 'error' };
-            trial++;
-            // give delay 3000 ms + 10% of random offset
-            const delay = 3000 + Math.random() * 300;
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
-        if (result.status === "error") {
-            return null;
-        }
-        return result.content || "";
-    } catch (e) {
-        console.log(e);
-    }
-    return null;
-}
-
 async function fetchPlainTextContentEF(url: string): Promise<string | null> {
     try {
-        const params = new URLSearchParams({url})
-        const result = await fetch(`/api/down?${params.toString()}`, {method:'GET'})
-        if(result && result.ok) {
-            const {content} = await result.json();
+        const params = new URLSearchParams({ url })
+        const result = await fetch(`/api/down?${params.toString()}`, { method: 'GET' })
+        if (result && result.ok) {
+            const { content } = await result.json();
             return content || "";
         }
     } catch (e) {
@@ -185,6 +162,7 @@ function SearchItem({ data, pong }: SearchItemProps) {
                                 .filter(c => c.length < MAX_LENGTH)
                                 .filter(c => c.length > MIN_LENGTH);
                             const totalChunks = chunks.length;
+                            const chunkIds:number[] = [];
 
                             for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
                                 await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
@@ -195,10 +173,11 @@ function SearchItem({ data, pong }: SearchItemProps) {
                                     const vobject: IndexedChunkData = { parentId, url, chunk, source };
                                     const name = JSON.stringify(vobject);
                                     const id = getUniqueId(name);
+                                    chunkIds.push(id);
                                     await add({ id, name }, embedding);
                                 }));
                                 setIndexingProgress(Math.min(((i + BATCH_SIZE) / totalChunks) * 100, 100));
-                                setItem(prev => prev ? { ...prev, isIndexed: true } : prev);
+                                setItem(prev => prev ? { ...prev, isIndexed: true, chunks: chunkIds } : prev);
                             }
                         } catch (e) {
                             console.log("", e);
@@ -213,7 +192,7 @@ function SearchItem({ data, pong }: SearchItemProps) {
     }, [pong, isLoading, item, embed, add, indexing, startIndexing]);
 
     const hasNoContent = useCallback(() => {
-        
+
         return !retrieving && !error && item && item.isRetrieved && (item.content ? item.content.length === 0 : true);
     }, [retrieving, item, error])
 
@@ -247,13 +226,12 @@ function SearchItem({ data, pong }: SearchItemProps) {
     return (
         <div className="flex flex-col p-4 mb-4 shadow-md rounded-lg hover:shadow-lg transition-shadow duration-300">
             <a href={data.url} target="_blank" rel="noopener noreferrer" className="group">
-                <h3 className="text-lg font-semibold group-hover:underline mb-1">{data.title}</h3>
-                <p className="text-sm mb-2">{data.source}</p>
-                <p className="text-sm mb-2">{data.description}</p>
+                <div className="text-lg font-semibold group-hover:underline mb-1">{data.title}</div>
+                <div className="text-sm mb-2">{data.source}</div>
             </a>
-
+            <div className="text-sm mb-2">{data.description}</div>
             {/* Dates display */}
-            <div className="flex justify-between items-center text-xs text-gray-500 mb-2">
+            <div className="flex justify-between items-center text-xs mb-2 font-light">
                 <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-1" />
                     <span>Content: {formatDate(data.contentDate)}</span>

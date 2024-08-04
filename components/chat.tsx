@@ -59,21 +59,31 @@ function ChatUI({id, apiKey, context}:ChatUIProps) {
   return (
     <Card className="w-[50vw] h-[50vh] flex flex-col">
       <CardContent className="flex flex-col h-full p-4">
-        <ScrollArea className="flex-grow mb-4 ">
+        <ScrollArea className="flex-grow mb-4">
           <div className="space-y-4">
             {messages.map((message, index) => (
-              <div key={index} className={`${message.role === 'user' ? 'text-right' : 'text-left'}`}>
-                <Card className={`inline-block p-2 ${message.role === 'user' ? 'bg-blue-100' : 'bg-gray-100'} relative group`}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => copyToClipboard(message.content)}
+              <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`relative max-w-[80%] ${message.role === 'user' ? 'mr-2' : 'ml-2'}`}>
+                  <div className={`p-2 border border-gray-300 dark:border-gray-600 rounded-lg relative group
+                    ${message.role === 'user' 
+                      ? 'rounded-br-none' 
+                      : 'rounded-bl-none'}`}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => copyToClipboard(message.content)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div 
+                    className={`absolute bottom-0 w-2 h-2 overflow-hidden
+                      ${message.role === 'user' ? 'right-[-8px]' : 'left-[-8px]'}`}
                   >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </Card>
+                  </div>
+                </div>
               </div>
             ))}
             <div ref={messagesEndRef} />

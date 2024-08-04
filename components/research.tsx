@@ -52,8 +52,7 @@ function RelevantChunkItem({ result }: RelevantChunkItemProps) {
                 <Badge variant="secondary" className="shrink-0">
                     {result.similarity.toFixed(3)}
                 </Badge>
-                <p className="text-sm flex-grow line-clamp-2">{data?.chunk}</p>
-                <span className="text-xs text-muted-foreground shrink-0">{data?.source}</span>
+                <ScrollArea className="text-sm flex-grow h-16">{data?.chunk}</ScrollArea>
             </CardContent>
         </Card>
     );
@@ -68,13 +67,14 @@ interface RelevantSummaryItemProps {
 function RelevantSummaryItem({ source, chunks, searchResults }: RelevantSummaryItemProps) {
     return (
         <Card className="w-full">
-            <CardContent className="p-6 space-y-4">
-                <div className="grid grid-cols-12 justify-between items-center">
-                    <div className="col-span-11">
+            <CardContent className="pt-6 space-y-4">
+                <div className="flex flex-row justify-between items-center w-full">
+                    <div className="">
                         <SearchItemMin data={source} />
                     </div>
-                    <div className="col-span-1 text-center">
-                        <p className="text-sm font-medium text-muted-foreground">Relevant Contents</p>
+                    <div className="text-center">
+                        <p className="text-sm font-medium text-muted-foreground">Relevant</p>
+                        <p className="text-sm font-medium text-muted-foreground">Contents</p>
                         <p className="text-2xl font-bold">{chunks.length}</p>
                     </div>
                 </div>

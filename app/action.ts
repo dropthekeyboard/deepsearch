@@ -86,6 +86,7 @@ async function GetGoogleContent2(
         description,
         contentDate: date,
         searchDate: new Date(),
+        chunks:[],
       });
     });
 
@@ -117,7 +118,7 @@ async function GetGoogleContent3(
     if (!result) {
       throw new Error("no response");
     }
-    const list = result.items.map(({ link, title, snippet }) => {
+    const list: WebSearchResult[] = result.items.map(({ link, title, snippet }) => {
       // snippet contains the time information at the beginning somehting like "6 days ago ... 5 AI Startups include.." or "Jul 5, 2024 ... 60 Growing AI Companies"
       // so parse date from the text
       const date = extractDateFromSnippet(snippet);
@@ -130,7 +131,8 @@ async function GetGoogleContent3(
         contentDate: date,
         searchDate: new Date(),
         source: "google",
-      } as WebSearchResult;
+        chunks:[],
+      };
     });
     console.log(list);
     fetchedCount += list.length;
@@ -165,6 +167,7 @@ async function GetYcRecentStories(
         contentDate: null,
         searchDate: new Date(),
         source: "hackernews",
+        chunks:[],
       })
     );
     return results;

@@ -14,6 +14,8 @@ async function fetchPlainTextContentBrowser(url: string): Promise<string> {
 }
 
 async function fetchPageContent(url: string): Promise<string> {
+  chromium.setHeadlessMode = true;
+  chromium.setGraphicsMode = false;
   const browser = await puppeteer.launch({
     headless: chromium.headless, // Set to false if you want to see the browser in action
     ignoreHTTPSErrors: true,
@@ -23,8 +25,8 @@ async function fetchPageContent(url: string): Promise<string> {
     args: [
       ...chromium.args,
       "--hide-scrollbars",
-      // '--no-sandbox',
-      // '--disable-setuid-sandbox',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
       "--disable-web-security",
       `--user-agent=${getUserAgent()}`,
     ],

@@ -39,6 +39,7 @@ interface WebSearchResult {
   searchDate: Date;
   isRetrieved?: boolean;
   isIndexed?: boolean;
+  chunks: number[];  // ids of VectorObjectWithEmbedding
 }
 
 

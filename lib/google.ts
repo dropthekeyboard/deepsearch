@@ -204,6 +204,7 @@ async function* search({
             source:'google',
             contentDate: new Date(),
             searchDate: new Date(),
+            chunks:[],
           };
         } else {
           yield link.attr('href') as string;

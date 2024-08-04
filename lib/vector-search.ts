@@ -30,7 +30,6 @@ class InitializedModel {
     return this.initialized;
   }
 }
-
 interface VectorObjectWithEmbedding extends VectorObject {
   embedding: number[];
 }
