@@ -177,8 +177,8 @@ function SearchItem({ data, pong }: SearchItemProps) {
                                     await add({ id, name }, embedding);
                                 }));
                                 setIndexingProgress(Math.min(((i + BATCH_SIZE) / totalChunks) * 100, 100));
-                                setItem(prev => prev ? { ...prev, isIndexed: true, chunks: chunkIds } : prev);
                             }
+                            setItem(prev => prev ? { ...prev, isIndexed: true, chunks: chunkIds } : prev);
                         } catch (e) {
                             console.log("", e);
                             setError(e);
