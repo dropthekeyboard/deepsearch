@@ -1,5 +1,5 @@
 import { ImageResponse } from '@vercel/og';
-import ReactMarkdown from 'react-markdown';
+import showdown from 'showdown';
 
 export const runtime = "edge"
 
@@ -13,9 +13,12 @@ export async function GET(req: Request) {
     const title = hasTitle
       ? searchParams.get('title')?.slice(0, 100)
       : 'Shared Message';
-    const description = hasDescription
-      ? searchParams.get('description')
-      : 'A message shared from our chat application.';
+    
+    let description = 'A message shared from our chat application.';
+    if (hasDescription) {
+      const converter = new showdown.Converter();
+      description = converter.makeHtml(searchParams.get('description') || '');
+    }
 
     return new ImageResponse(
       (
@@ -41,9 +44,8 @@ export async function GET(req: Request) {
               maxWidth: '80%',
               whiteSpace: 'pre-wrap',
             }}
-          >
-            <ReactMarkdown>{description}</ReactMarkdown>
-          </div>
+            dangerouslySetInnerHTML={{ __html: description }}
+          />
         </div>
       ),
       {
