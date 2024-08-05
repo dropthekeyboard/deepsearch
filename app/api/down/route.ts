@@ -7,19 +7,22 @@ export const maxDuration = 30;
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-
   const url = searchParams.get("url");
   if (url) {
-    const hit = await kv.get<string>(url);
-    if(hit) {
-        return Response.json({content: hit});
+    try {
+      const hit = await kv.get<string>(url);
+      if (hit) {
+        return Response.json({ content: hit });
+      }
+      const htmlContent = await fetchPageContent(url);
+      const plainText = htmlToText(htmlContent, {
+        wordwrap: 130,
+      });
+      await kv.set<string>(url, plainText);
+      return Response.json({ content: plainText });
+    } catch (e) {
+      return Response.json({ content: "" });
     }
-    const htmlContent = await fetchPageContent(url);
-    const plainText = htmlToText(htmlContent, {
-      wordwrap: 130,
-    });
-    await kv.set<string>(url, plainText);
-    return Response.json({ content: plainText });
   }
   return Response.json({ message: "no url" }, { status: 400 });
 }

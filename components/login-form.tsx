@@ -143,8 +143,7 @@ const LoginForm: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
       <div className="w-full max-w-md p-8 space-y-8 rounded-xl shadow-md">
-        <h1 className="text-2xl font-bold text-center">Welcome</h1>
-        
+        <div className="text-2xl font-bold text-center">Welcome</div>
         <div className="flex justify-center rounded-xl overflow-hidden">
           <GameOfLifeAnimation />
         </div>
