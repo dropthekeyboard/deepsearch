@@ -35,7 +35,7 @@ export async function GET(req: Request) {
         >
           <div
             style={{
-              fontSize: 32,
+              fontSize: 20,
               fontWeight: 'bold',
               color: 'black',
               marginBottom: 10,
@@ -51,17 +51,9 @@ export async function GET(req: Request) {
             alignItems: 'flex-start',
             width: '100%',
             overflowY: 'hidden',
-            maxHeight: '880px',
           }}>
-            <ReactMarkdown 
+            <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              components={{
-                p: ({node, ...props}) => <p style={{ fontSize: 18, marginBottom: 8, width: '100%', wordWrap: 'break-word' }} {...props} />,
-                table: ({node, ...props}) => <table style={{ borderCollapse: 'collapse', marginBottom: 10, width: '100%', maxWidth: '560px' }} {...props} />,
-                thead: ({node, ...props}) => <thead style={{ backgroundColor: '#f0f0f0' }} {...props} />,
-                th: ({node, ...props}) => <th style={{ border: '1px solid black', padding: 6, fontSize: 16, textAlign: 'left' }} {...props} />,
-                td: ({node, ...props}) => <td style={{ border: '1px solid black', padding: 6, fontSize: 16, wordWrap: 'break-word' }} {...props} />,
-              }}
             >
               {description}
             </ReactMarkdown>
