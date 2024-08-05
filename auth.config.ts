@@ -26,9 +26,15 @@ export const authConfig = {
       return true;
     },
     authorized({ auth, request: { nextUrl } }) {
-      console.log("atorize");
+      console.log("authorize");
       const isLoggedIn = !!auth?.user;
-      const isOnMain = nextUrl.pathname.startsWith("/");
+      const isOnMain = nextUrl.pathname === "/";
+      const isOnMdPath = nextUrl.pathname.startsWith("/md/");
+    
+      if (isOnMdPath) {
+        return true; // Allow access to /md/* without login
+      }
+    
       if (isOnMain) {
         if (isLoggedIn) return true;
         return false; // Redirect unauthenticated users to login page
