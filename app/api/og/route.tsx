@@ -19,30 +19,28 @@ export async function GET(req: Request) {
       ? searchParams.get('description')
       : 'A message shared from our chat application.';
 
-
     return new ImageResponse(
       (
         <div
           style={{
             backgroundColor: 'white',
-            backgroundSize: '150px 150px',
             height: '100%',
             width: '100%',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'flex-start',
-            padding: '40px 20px',
+            padding: '20px',
           }}
         >
           <div
             style={{
-              fontSize: 36,
+              fontSize: 32,
               fontWeight: 'bold',
               color: 'black',
-              marginBottom: 20,
+              marginBottom: 10,
               width: '100%',
-              textAlign: 'center',
+              textAlign: 'left',
             }}
           >
             {title}
@@ -53,9 +51,20 @@ export async function GET(req: Request) {
             alignItems: 'flex-start',
             width: '100%',
             overflowY: 'hidden',
-            maxHeight: '800px', // 내용이 이미지를 벗어나지 않도록 제한
+            maxHeight: '880px',
           }}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{description}</ReactMarkdown>
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              components={{
+                p: ({node, ...props}) => <p style={{ fontSize: 18, marginBottom: 8, width: '100%', wordWrap: 'break-word' }} {...props} />,
+                table: ({node, ...props}) => <table style={{ borderCollapse: 'collapse', marginBottom: 10, width: '100%', maxWidth: '560px' }} {...props} />,
+                thead: ({node, ...props}) => <thead style={{ backgroundColor: '#f0f0f0' }} {...props} />,
+                th: ({node, ...props}) => <th style={{ border: '1px solid black', padding: 6, fontSize: 16, textAlign: 'left' }} {...props} />,
+                td: ({node, ...props}) => <td style={{ border: '1px solid black', padding: 6, fontSize: 16, wordWrap: 'break-word' }} {...props} />,
+              }}
+            >
+              {description}
+            </ReactMarkdown>
           </div>
         </div>
       ),
