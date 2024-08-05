@@ -117,7 +117,7 @@ function ResearchView() {
         if (tokenCount) {
             console.log("token count: ", tokenCount);
             if (!(key && key.length > 0)) {
-                if (tokenCount > (96 * 1024)) {
+                if (tokenCount > (64 * 1024)) {
                     toast({
                         description: <Markdown>{`context information is too large  : ${tokenCount} tokens. *`}</Markdown>,
                         variant:'destructive',
