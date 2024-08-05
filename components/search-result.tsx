@@ -130,7 +130,7 @@ function SearchItem({ data, pong }: SearchItemProps) {
                 console.log("no ID");
             }
         }
-    }, [item]);
+    }, [item, getResultById, upsertResult]);
 
     useEffect(() => {
         if (pong && !isLoading && item) {
