@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import pako from 'pako';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Metadata, ResolvingMetadata } from 'next';
 
 interface PageProps {
   params: {
@@ -18,22 +19,51 @@ interface Message {
 
 async function decodeMessage(encodedChat: string): Promise<Message | null> {
   try {
-    // Convert from URL-safe base64 back to regular base64
-    const base64 = encodedChat.replace(/-/g, '+').replace(/_/g, '/');
-    const paddedBase64 = base64 + '='.repeat((4 - base64.length % 4) % 4);
-    
-    const binaryString = atob(paddedBase64);
+    const base64 = decodeURIComponent(encodedChat).replace(/-/g, '+').replace(/_/g, '/');
+    const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
-    
     const decompressed = pako.inflate(bytes, { to: 'string' });
     return JSON.parse(decompressed);
   } catch (error) {
     console.error('Failed to decode message:', error);
     return null;
   }
+}
+
+export async function generateMetadata(
+  { params }: PageProps,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const message = await decodeMessage(params.encodedChat);
+
+  if (!message) {
+    return {
+      title: 'Shared Message - Not Found',
+      description: 'The requested message could not be found.',
+    };
+  }
+
+  const title = `Shared ${message.role === 'user' ? 'User' : 'Assistant'} Message`;
+  const description = message.content.substring(0, 200) + (message.content.length > 200 ? '...' : '');
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [`/api/og?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [`/api/og?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`],
+    },
+  };
 }
 
 export default async function SharedMessagePage({ params }: PageProps) {
