@@ -11,8 +11,12 @@ export async function POST(req: Request) {
     baseURL: 'https://api.groq.com/openai/v1',
     apiKey: process.env.GROQ_API_KEY,
   });
+  const together = createOpenAI({
+    apiKey: process.env.TOGETHER_API_KEY,
+    baseURL: "https://api.together.xyz/v1"
+  })
   const openai = createOpenAI({
-    apiKey
+    apiKey: process.env.OPENAI_API_KEY,
   })
 
   const [last] = messages.slice(-1);
@@ -20,11 +24,10 @@ export async function POST(req: Request) {
   
 
   const result = await streamText({
-    model: apiKey? openai('gpt-4o-mini') : groq('llama-3.1-8b-instant'),
+    model: openai('gpt-4o-mini'),
     system: 'You are a helpful assistant. intelligently help user finding answer based on given information. use markdown if applicable for better readability',
-    messages: convertToCoreMessages([...rest, {role:'user', content: `please see following content carefully: ${context}`},last]),
-    maxTokens: 1024,
-    frequencyPenalty: 0.2
+    messages: convertToCoreMessages([{role:'user', content: `please see following content carefully: ${context}`},...rest,last]),
+    maxTokens: 2048,
   });
 
   return result.toAIStreamResponse();

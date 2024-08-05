@@ -117,9 +117,9 @@ function ResearchView() {
         if (tokenCount) {
             console.log("token count: ", tokenCount);
             if (!(key && key.length > 0)) {
-                if (tokenCount > 7000) {
+                if (tokenCount > (96 * 1024)) {
                     toast({
-                        description: <Markdown>{`context information is too large for llama-3.1-8b (8K) : ${tokenCount} tokens. you can switch the model to **gpt-4o-mini** by entering the *[OpenAI API Key](https://platform.openai.com/settings/profile?tab=api-keys)*`}</Markdown>,
+                        description: <Markdown>{`context information is too large  : ${tokenCount} tokens. *`}</Markdown>,
                         variant:'destructive',
                         title:'Too large information'
                     })
@@ -132,7 +132,7 @@ function ResearchView() {
                 }
             }
         }
-    }, [tokenCount]);
+    }, [tokenCount, key, toast]);
 
 
     const fetchSearchResults = useCallback(async (query: string) => {

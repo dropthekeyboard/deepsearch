@@ -2,6 +2,11 @@ import type { NextAuthConfig } from "next-auth";
 import { get } from "@vercel/edge-config";
 import { JWTAdapter } from "./lib/adapters";
 
+const protectedPath: string[] = [
+  "/",
+  "/settings"
+];
+
 export const authConfig = {
   pages: {
     signIn: "/login",
@@ -28,20 +33,13 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       console.log("authorize");
       const isLoggedIn = !!auth?.user;
-      const isOnMain = nextUrl.pathname === "/";
-      const isOnMdPath = nextUrl.pathname.startsWith("/md/");
-    
-      if (isOnMdPath) {
-        return true; // Allow access to /md/* without login
-      }
-    
-      if (isOnMain) {
+      const isProtectedPath = protectedPath.some(v => v === nextUrl.pathname);
+      if (isProtectedPath) {
         if (isLoggedIn) return true;
-        return false; // Redirect unauthenticated users to login page
-      } else if (isLoggedIn) {
-        return Response.redirect(new URL("/", nextUrl));
+        return Response.redirect(new URL("/login", nextUrl)); // Redirect unauthenticated users to login page
+      } else {
+        return true;
       }
-      return true;
     },
   },
   providers: [], // Add providers with an empty array for now
