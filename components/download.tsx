@@ -87,7 +87,7 @@ function DownloadView() {
                 description: "검색어를 입력하세요"
             })
         }
-    }, [query]);
+    }, [query, toast]);
 
     const onDeleteQuery = useCallback((v: string) => {
         setQueries(queries => [...queries.filter(q => q !== v)])
