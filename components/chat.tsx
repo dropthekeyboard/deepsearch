@@ -1,19 +1,23 @@
 "use client"
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useChat } from "ai/react";
-import { Send, Copy, Trash2 } from "lucide-react";
-import { useLayoutEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from "remark-gfm";
+
+import React, { useRef, useLayoutEffect } from 'react';
+import { useChat } from 'ai/react';
+import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
+import { Copy, Send, Trash2, Share2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import pako from 'pako';
 interface ChatUIProps {
   id: string;
   apiKey: string;
   context: string;
 }
+
+
 
 function ChatUI({id, apiKey, context}:ChatUIProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -56,6 +60,39 @@ function ChatUI({id, apiKey, context}:ChatUIProps) {
     });
   };
 
+  const compressAndShareMessage = (message: any) => {
+    const messageContent = JSON.stringify(message);
+    const compressed = pako.deflate(messageContent);
+    
+    // Convert Uint8Array to regular array
+    const compressedArray = Array.from(compressed);
+    
+    // Process in chunks to avoid "Maximum call stack size exceeded" error
+    const chunkSize = 8192;
+    let result = '';
+    for (let i = 0; i < compressedArray.length; i += chunkSize) {
+      result += String.fromCharCode.apply(null, compressedArray.slice(i, i + chunkSize));
+    }
+    
+    // Convert to URL-safe base64
+    const base64 = btoa(result);
+    const urlSafe = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    
+    const shareableLink = `${window.location.origin}/md/${encodeURIComponent(urlSafe)}`;
+
+    navigator.clipboard.writeText(shareableLink).then(() => {
+      toast({
+        description: "메시지 공유 링크가 클립보드에 복사되었습니다.",
+      });
+    }).catch((err) => {
+      console.error('공유 링크 복사 실패:', err);
+      toast({
+        variant: "destructive",
+        description: "공유 링크 복사에 실패했습니다.",
+      });
+    });
+  };
+
   return (
     <Card className="w-[50vw] h-[50vh] flex flex-col">
       <CardContent className="flex flex-col h-full p-4">
@@ -64,19 +101,28 @@ function ChatUI({id, apiKey, context}:ChatUIProps) {
             {messages.map((message, index) => (
               <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`relative max-w-[80%] ${message.role === 'user' ? 'mr-2' : 'ml-2'}`}>
-                  <div className={`p-2 border border-gray-300 dark:border-gray-600 rounded-lg relative group
+                  <div className={`p-2 border rounded-lg relative group
                     ${message.role === 'user' 
                       ? 'rounded-br-none' 
                       : 'rounded-bl-none'}`}>
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => copyToClipboard(message.content)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="mr-1"
+                        onClick={() => copyToClipboard(message.content)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => compressAndShareMessage(message)}
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div 
                     className={`absolute bottom-0 w-2 h-2 overflow-hidden
