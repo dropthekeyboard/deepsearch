@@ -21,44 +21,11 @@ export async function GET(req: Request) {
 
     return new ImageResponse(
       (
-        <div
-          style={{
-            backgroundColor: 'white',
-            height: '100%',
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            justifyContent: 'flex-start',
-            padding: '20px',
-          }}
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
         >
-          <div
-            style={{
-              fontSize: 20,
-              fontWeight: 'bold',
-              color: 'black',
-              marginBottom: 10,
-              width: '100%',
-              textAlign: 'left',
-            }}
-          >
-            {title}
-          </div>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            width: '100%',
-            overflowY: 'hidden',
-          }}>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-            >
-              {description}
-            </ReactMarkdown>
-          </div>
-        </div>
+          {description}
+        </ReactMarkdown>
       ),
       {
         width: 600,
