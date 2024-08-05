@@ -1,7 +1,5 @@
-// app/api/og/route.tsx
 import { ImageResponse } from '@vercel/og';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
 export const runtime = "edge"
 
@@ -21,11 +19,32 @@ export async function GET(req: Request) {
 
     return new ImageResponse(
       (
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
+        <div
+          style={{
+            height: '100%',
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#fff',
+            fontSize: 32,
+            fontWeight: 600,
+          }}
         >
-          {description}
-        </ReactMarkdown>
+          <div style={{ marginBottom: 20 }}>{title}</div>
+          <div
+            style={{
+              fontSize: 18,
+              fontWeight: 400,
+              textAlign: 'center',
+              maxWidth: '80%',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            <ReactMarkdown>{description}</ReactMarkdown>
+          </div>
+        </div>
       ),
       {
         width: 800,
