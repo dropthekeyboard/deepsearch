@@ -4,43 +4,85 @@ import { CSSProperties } from 'react';
 export const runtime = "edge"
 
 type ParsedElement = {
-  type: 'text' | 'table';
-  content: string | string[][];
+  type: 'text' | 'table' | 'list';
+  content: string | string[][] | string[];
   style: CSSProperties;
 };
+
+function isTableSeparator(cells: string[]): boolean {
+  return cells.every(cell => /^:?-+:?$/.test(cell.trim()) || cell.trim() === '-');
+}
+
+function replaceLinksWithEmoji(text: string): string {
+  // Replace markdown links with a link emoji
+  return text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '🔗 $1');
+}
 
 function parseMarkdown(markdown: string): ParsedElement[] {
   const lines = markdown.split('\n');
   const elements: ParsedElement[] = [];
   let currentTable: string[][] = [];
+  let currentList: string[] = [];
+  let isInTable = false;
+  let isInList = false;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = replaceLinksWithEmoji(lines[i].trim());
 
-    if (line.includes('|')) {
-      // Table row
-      const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell !== '');
-      if (!cells.every(cell => cell === '---')) {  // Ignore separator rows
+    if (line.startsWith('|') && line.endsWith('|') && line.includes('|', 1)) {
+      // Potential table row
+      if (isInList) {
+        elements.push({ type: 'list', content: currentList, style: { fontSize: '16px', marginBottom: '8px' } });
+        currentList = [];
+        isInList = false;
+      }
+
+      const cells = line.slice(1, -1).split('|').map(cell => cell.trim());
+      
+      if (!isInTable) {
+        isInTable = true;
+        currentTable.push(cells);
+      } else if (isTableSeparator(cells) && currentTable.length === 1) {
+        continue;
+      } else {
         currentTable.push(cells);
       }
 
-      // Check if it's the end of the table
-      if (i === lines.length - 1 || !lines[i + 1].includes('|')) {
+      if (i === lines.length - 1 || !lines[i + 1].trim().startsWith('|')) {
         elements.push({
           type: 'table',
           content: currentTable,
           style: { fontSize: '14px', width: '100%' }
         });
         currentTable = [];
+        isInTable = false;
       }
-    } else {
-      if (currentTable.length > 0) {
+    } else if (line.startsWith('- ')) {
+      if (isInTable) {
         elements.push({
           type: 'table',
           content: currentTable,
           style: { fontSize: '14px', width: '100%' }
         });
         currentTable = [];
+        isInTable = false;
+      }
+      isInList = true;
+      currentList.push(line.slice(2));
+    } else {
+      if (isInTable) {
+        elements.push({
+          type: 'table',
+          content: currentTable,
+          style: { fontSize: '14px', width: '100%' }
+        });
+        currentTable = [];
+        isInTable = false;
+      }
+      if (isInList) {
+        elements.push({ type: 'list', content: currentList, style: { fontSize: '16px', marginBottom: '8px' } });
+        currentList = [];
+        isInList = false;
       }
 
       let style: CSSProperties = { fontSize: '16px', marginBottom: '8px' };
@@ -52,22 +94,23 @@ function parseMarkdown(markdown: string): ParsedElement[] {
       } else if (line.startsWith('## ')) {
         text = line.slice(3);
         style = { fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' };
-      } else if (line.startsWith('- ')) {
-        text = '• ' + line.slice(2);
-        style = { ...style, paddingLeft: '20px' };
       }
 
       if (text.includes('**')) {
-        text = text.replace(/\*\*/g, '');
+        text = text.replace(/\*\*(.*?)\*\*/g, '$1');
         style.fontWeight = 'bold';
       }
       if (text.includes('*')) {
-        text = text.replace(/\*/g, '');
+        text = text.replace(/\*(.*?)\*/g, '$1');
         style.fontStyle = 'italic';
       }
 
       elements.push({ type: 'text', content: text, style });
     }
+  }
+
+  if (isInList) {
+    elements.push({ type: 'list', content: currentList, style: { fontSize: '16px', marginBottom: '8px' } });
   }
 
   return elements;
@@ -90,7 +133,7 @@ export async function GET(req: Request) {
             width: '100%',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'flex-start',
             backgroundColor: '#f0f0f0',
             padding: '40px',
@@ -108,7 +151,7 @@ export async function GET(req: Request) {
               const tableContent = element.content as string[][];
               const maxColumns = Math.max(...tableContent.map(row => row.length));
               return (
-                <div key={index} style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+                <div key={index} style={{ width: '100%', display: 'flex', flexDirection: 'column', marginBottom: '16px' }}>
                   {tableContent.map((row, rowIndex) => (
                     <div key={rowIndex} style={{ display: 'flex', width: '100%' }}>
                       {Array.from({ length: maxColumns }).map((_, cellIndex) => (
@@ -120,11 +163,22 @@ export async function GET(req: Request) {
                           fontSize: '14px',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          minHeight: '20px',  // Ensure empty cells are visible
+                          minHeight: '20px',
                         }}>
                           {row[cellIndex] || ''}
                         </div>
                       ))}
+                    </div>
+                  ))}
+                </div>
+              );
+            } else if (element.type === 'list') {
+              return (
+                <div key={index} style={{ width: '100%', display: 'flex', flexDirection: 'column', marginBottom: '16px' }}>
+                  {(element.content as string[]).map((item, itemIndex) => (
+                    <div key={itemIndex} style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ marginRight: '8px', fontSize: '16px' }}>•</div>
+                      <div style={{ fontSize: '16px' }}>{item}</div>
                     </div>
                   ))}
                 </div>
@@ -134,8 +188,8 @@ export async function GET(req: Request) {
         </div>
       ),
       {
-        width: 600,
-        height: 800,
+        width: 800,
+        height: 1200,
       }
     );
   } catch (e: any) {
