@@ -45,3 +45,10 @@ model User {
   accounts          Account[]
   sessions          Session[]
 }
+
+model SharedContent {
+  id               String      @id @default(cuid()) @map("_id")
+  content          String
+  who              String
+  view             Int
+}

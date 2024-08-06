@@ -1,6 +1,6 @@
 "use client"
-
-import React, { useRef, useLayoutEffect } from 'react';
+import { createHash } from 'crypto';
+import React, { useRef, useLayoutEffect, useEffect, useState } from 'react';
 import { useChat } from 'ai/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,6 +11,8 @@ import { Copy, Send, Trash2, Share2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import pako from 'pako';
+import { storeContentInCache } from '@/app/lib/actions';
+import { useSession } from 'next-auth/react';
 interface ChatUIProps {
   id: string;
   apiKey: string;
@@ -20,6 +22,8 @@ interface ChatUIProps {
 
 
 function ChatUI({id, apiKey, context}:ChatUIProps) {
+  const {status, data} = useSession();
+  const [who, setWho] = useState<string>("User");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { messages, handleInputChange, input, handleSubmit, setMessages } = useChat({
     id,
@@ -34,6 +38,15 @@ function ChatUI({id, apiKey, context}:ChatUIProps) {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    if(status === 'authenticated') {
+      if(data) {
+        const {user} = data;
+        setWho(user?.name||"User");
+      }
+    }
+  },[status, data]);
 
   useLayoutEffect(() => {
     scrollToBottom();
@@ -59,39 +72,42 @@ function ChatUI({id, apiKey, context}:ChatUIProps) {
       description: "대화 내역이 삭제되었습니다.",
     });
   };
+  const removeQuotes = (str: string): string => {
+    return str.replace(/["]/g, '');
+  };
 
-  const compressAndShareMessage = (message: any) => {
-    const messageContent = JSON.stringify(message);
-    const compressed = pako.deflate(messageContent);
+  const generateSecureHashAndShareMessage = async (message: string, who: string) => {
+    const cleanMessage = removeQuotes(message);
+    const messageContent = JSON.stringify(`${cleanMessage}.${who}`);
     
-    // Convert Uint8Array to regular array
-    const compressedArray = Array.from(compressed);
+    // Create a secure hash of the content
+    const hash = createHash('sha256')
+      .update(messageContent)
+      .digest('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
     
-    // Process in chunks to avoid "Maximum call stack size exceeded" error
-    const chunkSize = 8192;
-    let result = '';
-    for (let i = 0; i < compressedArray.length; i += chunkSize) {
-      result += String.fromCharCode.apply(null, compressedArray.slice(i, i + chunkSize));
-    }
-    
-    // Convert to URL-safe base64
-    const base64 = btoa(result);
-    const urlSafe = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    
-    const shareableLink = `${window.location.origin}/md/${encodeURIComponent(urlSafe)}`;
-
-    navigator.clipboard.writeText(shareableLink).then(() => {
+    const shareableLink = `${window.location.origin}/md/${encodeURIComponent(hash)}`;
+  
+    try {
+      // Copy to clipboard immediately
+      await navigator.clipboard.writeText(shareableLink);
       toast({
         description: "메시지 공유 링크가 클립보드에 복사되었습니다.",
       });
-    }).catch((err) => {
+  
+      // Then store the content asynchronously
+      storeContentInCache(hash, cleanMessage).catch(console.error);
+    } catch (err) {
       console.error('공유 링크 복사 실패:', err);
       toast({
         variant: "destructive",
         description: "공유 링크 복사에 실패했습니다.",
       });
-    });
+    }
   };
+  
 
   return (
     <Card className="w-[50vw] h-[50vh] flex flex-col">
@@ -118,7 +134,7 @@ function ChatUI({id, apiKey, context}:ChatUIProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => compressAndShareMessage(message)}
+                        onClick={() => generateSecureHashAndShareMessage(message.content, who)}
                       >
                         <Share2 className="h-4 w-4" />
                       </Button>
