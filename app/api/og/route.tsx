@@ -20,14 +20,16 @@ function parseMarkdown(markdown: string): ParsedElement[] {
     if (line.includes('|')) {
       // Table row
       const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell !== '');
-      currentTable.push(cells);
+      if (!cells.every(cell => cell === '---')) {  // Ignore separator rows
+        currentTable.push(cells);
+      }
 
       // Check if it's the end of the table
       if (i === lines.length - 1 || !lines[i + 1].includes('|')) {
         elements.push({
           type: 'table',
           content: currentTable,
-          style: { fontSize: '14px', borderCollapse: 'collapse' as const, width: '100%' }
+          style: { fontSize: '14px', width: '100%' }
         });
         currentTable = [];
       }
@@ -36,7 +38,7 @@ function parseMarkdown(markdown: string): ParsedElement[] {
         elements.push({
           type: 'table',
           content: currentTable,
-          style: { fontSize: '14px', borderCollapse: 'collapse' as const, width: '100%' }
+          style: { fontSize: '14px', width: '100%' }
         });
         currentTable = [];
       }
@@ -88,41 +90,52 @@ export async function GET(req: Request) {
             width: '100%',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'flex-start',
+            alignItems: 'center',
             justifyContent: 'flex-start',
             backgroundColor: '#f0f0f0',
             padding: '40px',
-            overflowY: 'auto',
           }}
         >
           <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '24px', width: '100%', textAlign: 'center' }}>{title}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', gap: '8px' }}>
-            {parsedElements.map((element, index) => {
-              if (element.type === 'text') {
-                return <div key={index} style={element.style}>{element.content as string}</div>;
-              } else if (element.type === 'table') {
-                const tableContent = element.content as string[][];
-                return (
-                  <table key={index} style={element.style}>
-                    <tbody>
-                      {tableContent.map((row, rowIndex) => (
-                        <tr key={rowIndex}>
-                          {row.map((cell, cellIndex) => (
-                            <td key={cellIndex} style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: rowIndex === 0 ? '#e0e0e0' : '#fff' }}>{cell}</td>
-                          ))}
-                        </tr>
+          {parsedElements.map((element, index) => {
+            if (element.type === 'text') {
+              return (
+                <div key={index} style={{ ...element.style, width: '100%', display: 'flex' }}>
+                  {element.content as string}
+                </div>
+              );
+            } else if (element.type === 'table') {
+              const tableContent = element.content as string[][];
+              const maxColumns = Math.max(...tableContent.map(row => row.length));
+              return (
+                <div key={index} style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+                  {tableContent.map((row, rowIndex) => (
+                    <div key={rowIndex} style={{ display: 'flex', width: '100%' }}>
+                      {Array.from({ length: maxColumns }).map((_, cellIndex) => (
+                        <div key={cellIndex} style={{
+                          flex: 1,
+                          border: '1px solid #ddd',
+                          padding: '8px',
+                          backgroundColor: rowIndex === 0 ? '#e0e0e0' : '#fff',
+                          fontSize: '14px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          minHeight: '20px',  // Ensure empty cells are visible
+                        }}>
+                          {row[cellIndex] || ''}
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
-                );
-              }
-            })}
-          </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+          })}
         </div>
       ),
       {
         width: 800,
-        height: 1200, // Increased height for more vertical space
+        height: 1200,
       }
     );
   } catch (e: any) {
