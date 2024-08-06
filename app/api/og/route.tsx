@@ -134,8 +134,8 @@ export async function GET(req: Request) {
         </div>
       ),
       {
-        width: 800,
-        height: 1200,
+        width: 400,
+        height: 600,
       }
     );
   } catch (e: any) {
