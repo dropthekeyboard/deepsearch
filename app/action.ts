@@ -229,6 +229,7 @@ async function fetchPlainTextContentLegacy(url: string): Promise<string> {
   return plainText;
 }
 
+
 export {
     createRetrievalTask,
     fetchPlainTextContentLegacy,

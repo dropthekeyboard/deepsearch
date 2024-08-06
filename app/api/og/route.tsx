@@ -123,8 +123,6 @@ export async function GET(req: Request) {
     const title = searchParams.get('title')?.slice(0, 100) || 'Shared Assistant Message';
     const description = searchParams.get('description') || 'A message shared from our chat application.';
 
-    const parsedElements = parseMarkdown(description);
-
     return new ImageResponse(
       (
         <div
@@ -140,51 +138,7 @@ export async function GET(req: Request) {
           }}
         >
           <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '24px', width: '100%', textAlign: 'center' }}>{title}</div>
-          {parsedElements.map((element, index) => {
-            if (element.type === 'text') {
-              return (
-                <div key={index} style={{ ...element.style, width: '100%', display: 'flex' }}>
-                  {element.content as string}
-                </div>
-              );
-            } else if (element.type === 'table') {
-              const tableContent = element.content as string[][];
-              const maxColumns = Math.max(...tableContent.map(row => row.length));
-              return (
-                <div key={index} style={{ width: '100%', display: 'flex', flexDirection: 'column', marginBottom: '16px' }}>
-                  {tableContent.map((row, rowIndex) => (
-                    <div key={rowIndex} style={{ display: 'flex', width: '100%' }}>
-                      {Array.from({ length: maxColumns }).map((_, cellIndex) => (
-                        <div key={cellIndex} style={{
-                          flex: 1,
-                          border: '1px solid #ddd',
-                          padding: '8px',
-                          backgroundColor: rowIndex === 0 ? '#e0e0e0' : '#fff',
-                          fontSize: '14px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          minHeight: '20px',
-                        }}>
-                          {row[cellIndex] || ''}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              );
-            } else if (element.type === 'list') {
-              return (
-                <div key={index} style={{ width: '100%', display: 'flex', flexDirection: 'column', marginBottom: '16px' }}>
-                  {(element.content as string[]).map((item, itemIndex) => (
-                    <div key={itemIndex} style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                      <div style={{ marginRight: '8px', fontSize: '16px' }}>•</div>
-                      <div style={{ fontSize: '16px' }}>{item}</div>
-                    </div>
-                  ))}
-                </div>
-              );
-            }
-          })}
+          {description}
         </div>
       ),
       {

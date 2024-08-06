@@ -5,15 +5,14 @@ import { SearchResultBlock } from "@/components/search-result";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { useAsyncTransition } from "@/hooks/use-async";
 import { useVectorSearch } from "@/hooks/use-vector-search";
-import { WebSearchResult } from "@/types";
-import { ChevronDown, Trash2, XCircle } from "lucide-react";
-import { ChangeEvent, useCallback, useEffect, useState } from "react";
-import { Slider } from "@/components/ui/slider";
-import { useToast } from "./ui/use-toast";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import useWebSearchResults from "@/hooks/use-web-search";
+import { WebSearchResult } from "@/types";
+import { Trash2, XCircle } from "lucide-react";
+import { ChangeEvent, useCallback, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 
 
 type Downloader = (query: string, count: number, periodInDays?: number) => Promise<WebSearchResult[] | Error>
