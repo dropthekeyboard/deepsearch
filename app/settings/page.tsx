@@ -39,7 +39,7 @@ export default function SettingPage() {
             upsertItem('apikey', tempKey);
             toast({description:'API키가 저장되었습니다.'});
         }
-    }, [setKey, tempKey, ready, upsertItem]);
+    }, [setKey, tempKey, ready, upsertItem, toast]);
 
     const clearIndexed = useCallback(async () => {
         if (db.isOpen()) {

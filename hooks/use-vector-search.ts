@@ -3,6 +3,7 @@ import { VectorSearchAPI } from '@/lib/vector-search';
 import { SearchResult } from 'client-vector-search';
 import { useCallback, useEffect, useState } from 'react';
 import { VectorObject } from './use-client-vector-search';
+import { db } from '@/lib/db';
 
 
 interface UseVectorSearchResult {
@@ -10,19 +11,21 @@ interface UseVectorSearchResult {
     add: (object: VectorObject, embedding?: number[]) => Promise<void>;
     embed: (v: string) => Promise<number[]>;
     isLoading: boolean;
+    size: number;
 }
 
 export function useVectorSearch(): UseVectorSearchResult {
     const { search, add, embed, isLoaded, ensureLoad } = useWorker<VectorSearchAPI>();
     const [isLoading, setIsLoading] = useState(true);
+    const [size, setSize] = useState<number>(0);
 
     useEffect(() => {
         let intervalId: NodeJS.Timeout;
-
         const checkLoaded = async () => {
             try {
                 const loaded = await isLoaded();
                 if (loaded) {
+                    setSize(await db.vectorIndex.count() || 0);
                     setIsLoading(false);
                     clearInterval(intervalId);
                 }
@@ -40,9 +43,6 @@ export function useVectorSearch(): UseVectorSearchResult {
             // 컴포넌트가 언마운트되거나 isLoading이 false가 되면 폴링 중지
             return () => clearInterval(intervalId);
         }
-
-
-
     }, [isLoaded, ensureLoad]);
 
     const wrappedSearch = useCallback(async (query: string | number[], topK?: number) => {
@@ -70,6 +70,7 @@ export function useVectorSearch(): UseVectorSearchResult {
         search: wrappedSearch,
         add: wrappedAdd,
         embed: wrappedEmbed,
-        isLoading
+        isLoading,
+        size,
     };
 }

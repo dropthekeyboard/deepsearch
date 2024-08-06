@@ -24,8 +24,8 @@ const useWebSearchResults = () => {
     const getResultById = useCallback(async (id: string): Promise<WebSearchResult | null> => {
         try {
             const result = await db.webSearchResults.get(id);
-            return result||null;
-        } catch (err:any) {
+            return result || null;
+        } catch (err: any) {
             console.error(`Failed to fetch result: ${err.message}`);
             return null;
         }
@@ -47,11 +47,52 @@ const useWebSearchResults = () => {
         }
     }, []);
 
+    const deleteSearchWithScope = useCallback(async (deletionScope: 'all' | '7days' | '30days'): Promise<void> => {
+        if (!db.isOpen()) {
+            throw new Error('Database is not open');
+        }
+
+        const currentDate = new Date();
+        let dateThreshold: Date | null = null;
+
+        if (deletionScope === "7days") {
+            dateThreshold = new Date(currentDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+        } else if (deletionScope === "30days") {
+            dateThreshold = new Date(currentDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+        }
+
+        if (dateThreshold) {
+            const oldResults = await db.webSearchResults
+                .where('searchDate')
+                .below(dateThreshold)
+                .toArray();
+
+            console.log(oldResults);
+
+            const chunkIdsToDelete = oldResults.flatMap(result => result.chunks);
+
+            await db.webSearchResults
+                .where('searchDate')
+                .below(dateThreshold)
+                .delete();
+
+            await db.vectorIndex
+                .where('id')
+                .anyOf(chunkIdsToDelete)
+                .delete();
+        } else {
+            // Delete all data
+            await db.vectorIndex.clear();
+            await db.webSearchResults.clear();
+        }
+    }, []);
+
     return {
         ready,
         getResultById,
         upsertResult,
         deleteResult,
+        deleteSearchWithScope,
     };
 };
 

@@ -8,10 +8,12 @@ import { Label } from "@/components/ui/label";
 import { useAsyncTransition } from "@/hooks/use-async";
 import { useVectorSearch } from "@/hooks/use-vector-search";
 import { WebSearchResult } from "@/types";
-import { XCircle } from "lucide-react";
-import { ChangeEvent, useCallback, useState } from "react";
+import { ChevronDown, Trash2, XCircle } from "lucide-react";
+import { ChangeEvent, useCallback, useEffect, useState } from "react";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "./ui/use-toast";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import useWebSearchResults from "@/hooks/use-web-search";
 
 
 type Downloader = (query: string, count: number, periodInDays?: number) => Promise<WebSearchResult[] | Error>
@@ -30,9 +32,9 @@ function DownloadView() {
     const [count, setCount] = useState(100);
     const [searchPeriod, setSearchPeriod] = useState<number>(7);
     const [downloading, startDownload] = useAsyncTransition();
-    const { isLoading } = useVectorSearch();
+    const { isLoading, size } = useVectorSearch();
+    const { ready, deleteSearchWithScope } = useWebSearchResults();
     const { toast } = useToast();
-    console.log(results);
     const onStart = useCallback(() => {
         setResults({});
         startDownload(async () => {
@@ -70,17 +72,17 @@ function DownloadView() {
     const onAddQuery = useCallback((e: any) => {
         const trimmed = query.trim()
         if (trimmed.length > 0) {
-            setQueries(qs => { 
+            setQueries(qs => {
                 const lcased = trimmed.toLowerCase();
-                if(qs.map(s => s.toLowerCase()).includes(lcased)) {
+                if (qs.map(s => s.toLowerCase()).includes(lcased)) {
                     toast({
                         description: `${trimmed}는 이미 선택된 검색어입니다`,
-                        variant:'destructive'
+                        variant: 'destructive'
                     });
                     return qs;
                 }
                 setQuery("");
-                return [...qs, trimmed]; 
+                return [...qs, trimmed];
             });
         } else {
             toast({
@@ -92,6 +94,42 @@ function DownloadView() {
     const onDeleteQuery = useCallback((v: string) => {
         setQueries(queries => [...queries.filter(q => q !== v)])
     }, []);
+
+    const handleDeleteOldContents = useCallback(async () => {
+        if (ready) {
+            try {
+                await deleteSearchWithScope('7days');
+                toast({
+                    description: "Successfully deleted contents older than 7 days.",
+                    variant: "default" // Assuming your toast component has a success variant
+                });
+            } catch (error) {
+                console.error('Error deleting old contents:', error);
+                toast({
+                    description: "Failed to delete old contents. Please try again later.",
+                    variant: "destructive"
+                });
+            }
+        }
+    }, [deleteSearchWithScope, ready, toast]);
+
+    useEffect(() => {
+        if (!isLoading && toast && size) {
+            console.log(size);
+            if (size > Number(process.env.INDEX_COUNT_THRESHOLD || 2000)) {
+                toast({
+                    variant: 'destructive',
+                    description: "Too many contents may lead to a poor experience. Please consider deleting old data.",
+                    action: (
+                        <Button onClick={handleDeleteOldContents}>
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Del. 7d+ data
+                        </Button>
+                    ),
+                });
+            }
+        }
+    }, [isLoading, size, toast, handleDeleteOldContents]);
 
     if (isLoading) {
         return <LoadingScreen />;
