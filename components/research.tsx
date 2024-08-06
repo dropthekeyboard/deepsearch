@@ -7,10 +7,11 @@ import useWebSearchResults from "@/hooks/use-web-search";
 import { IndexedChunkData, WebSearchResult } from "@/types";
 import { Label } from "@radix-ui/react-label";
 import { SearchResult } from "client-vector-search";
-import { Edit, MessageCircle, Save } from "lucide-react";
-import React, { useCallback, useEffect, useState } from 'react';
-import useSWRImmutable from "swr/immutable";
 import { encodingForModel } from "js-tiktoken";
+import { MessageCircle } from "lucide-react";
+import React, { useCallback, useEffect, useState } from 'react';
+import Markdown from "react-markdown";
+import useSWRImmutable from "swr/immutable";
 import ChatUI from "./chat";
 import { LoadingScreen } from "./loading";
 import { SearchItemMin } from "./search-result";
@@ -22,7 +23,6 @@ import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
 import { Slider } from "./ui/slider";
 import { useToast } from "./ui/use-toast";
-import Markdown from "react-markdown";
 
 
 const encoding = encodingForModel("gpt-4o")
@@ -157,7 +157,7 @@ function ResearchView() {
             }
         }
         return srcChunksMap;
-    }, [search, getResultById]);
+    }, [search, getResultById, topK]);
 
     const { data, isLoading } = useSWRImmutable(searchQuery && { searchQuery, topK }, async () => await fetchSearchResults(searchQuery));
     useEffect(() => {

@@ -115,7 +115,7 @@ function DownloadView() {
     useEffect(() => {
         if (!isLoading && toast && size) {
             console.log(size);
-            if (size > Number(process.env.INDEX_COUNT_THRESHOLD || 2000)) {
+            if (size > Number.parseInt(process.env.INDEX_COUNT_THRESHOLD||"2000")) {
                 toast({
                     variant: 'destructive',
                     description: "Too many contents may lead to a poor experience. Please consider deleting old data.",
