@@ -21,6 +21,7 @@ const MIN_LENGTH = 100;
 interface SearchItemProps {
     data: WebSearchResult;
     pong?: () => void;
+    onDelete?: (id: string) => void;
 }
 
 
@@ -40,7 +41,7 @@ function getUniqueId(veryLongJson: string): number {
 }
 
 
-function SearchItemMin({ data }: SearchItemProps) {
+function SearchItemMin({ data, onDelete }: SearchItemProps) {
     const { source, description, title, url, contentDate, searchDate, query, id } = data;
     const { deleteResult } = useWebSearchResults();
 
@@ -49,13 +50,23 @@ function SearchItemMin({ data }: SearchItemProps) {
         return format(date, 'MMM d, yyyy');
     };
 
+    const handleDelete = useCallback(async () => {
+        try {
+            await deleteResult(id);
+            onDelete?.(id);
+        } catch (e) {
+            console.log("", e);
+        }
+
+    }, [deleteResult,id, onDelete]);
+
     return (
         <div className="flex flex-col pt-4 mb-4 shadow-md rounded-lg hover:shadow-lg transition-shadow duration-300">
             <div className="flex flex-row justify-between">
                 <a href={url} target="_blank" rel="noopener noreferrer" className="group">
                     <div className="text-lg font-semibold group-hover:underline mb-1">{title}</div>
                 </a>
-                <Button onClick={() => deleteResult(id)} variant={"ghost"} size={'icon'}><Trash2 className="w-6 h-6" /></Button>
+                <Button onClick={handleDelete} variant={"ghost"} size={'icon'}><Trash2 className="w-6 h-6" /></Button>
             </div>
             <div className="text-sm mb-2">{source}</div>
             <ScrollArea className="text-sm mb-2 h-24">{description}</ScrollArea>
