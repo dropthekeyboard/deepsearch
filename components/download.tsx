@@ -114,7 +114,7 @@ function DownloadView() {
 
     useEffect(() => {
         if (!isLoading && toast && size) {
-            console.log(size);
+            console.log("",size, process.env.INDEX_COUNT_THRESHOLD);
             if (size > Number.parseInt(process.env.INDEX_COUNT_THRESHOLD||"2000")) {
                 toast({
                     variant: 'destructive',
