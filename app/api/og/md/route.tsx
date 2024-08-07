@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { kv } from '@vercel/kv';
 
 export const runtime = "edge"
-export const dynamic = "force-dynamic";
+
 const converter = new Converter({ tables: true, tablesHeaderId: true, emoji: true, ghCodeBlocks:true });
 const parser = Parser();
 
@@ -30,7 +30,6 @@ export async function GET(req: Request) {
     throw new Error(`invalid content for ${id}`);
   }
   const {who, content} = item;
-  console.log("content : ", content);
   try {
     const title: string = `👋 ${who}님이 Assistant와 대화를 공유합니다.`;
     const htmlContent: string = converter.makeHtml(content||'');

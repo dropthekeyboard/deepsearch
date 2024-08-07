@@ -331,20 +331,26 @@ function SearchItem({ data, pong }: SearchItemProps) {
     );
 }
 
-function SearchResultBlock({ results, query }: { results: WebSearchResult[], query: string }) {
+function SearchResultBlock({ results, query, onProcessingComplete }: { results: WebSearchResult[], query: string, onProcessingComplete?: () => void }) {
     const [processingComplete, setProcessingComplete] = useState(false);
     const [processing, setProcessing] = useState(0);
-
 
     const handlePong = useCallback((index: number) => {
         console.log(`Item ${index} completed`);
         if (index < results.length) {
             setProcessing(index + 1);
-        } else {
-            setProcessingComplete(true);
         }
-
     }, [results]);
+
+    useEffect(() => {
+        if(processingComplete) {
+            onProcessingComplete?.();
+        }
+    },[processingComplete, onProcessingComplete]);
+
+     useEffect(() => {
+        setProcessingComplete(processing >= results.length);
+     }, [processing, results]);
 
     const progressPercentage = (processing / results.length) * 100;
 
@@ -362,7 +368,7 @@ function SearchResultBlock({ results, query }: { results: WebSearchResult[], que
                 <SearchItem
                     key={index}
                     data={item}
-                    pong={processing === index ? () => handlePong(index) : undefined}
+                    pong={(processing === index) && onProcessingComplete ? () => handlePong(index) : undefined}
                 />
             ))}
         </div>

@@ -101,7 +101,6 @@ function ResearchView() {
     const { toast } = useToast();
     const [key, setKey] = useState<string>("");
     const { ready, getItem } = useCache<string>({ ttl: -1 });
-
     useEffect(() => {
         if (ready) {
             getItem('apikey').then((v) => {

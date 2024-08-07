@@ -33,9 +33,13 @@ function DownloadView() {
     const [downloading, startDownload] = useAsyncTransition();
     const { isLoading, size } = useVectorSearch();
     const { ready, deleteSearchWithScope } = useWebSearchResults();
+    const [processingQueryIndex, setProcessingQueryIndex] = useState(0);
+    const [processing, setProcessing] = useState(false);
     const { toast } = useToast();
     const onStart = useCallback(() => {
         setResults({});
+        setProcessingQueryIndex(0);
+        setProcessing(true);
         startDownload(async () => {
             for (const q in queries) {
                 const qstr = queries[q];
@@ -130,6 +134,16 @@ function DownloadView() {
         }
     }, [isLoading, size, toast, handleDeleteOldContents]);
 
+    const handleProcessingComplete = useCallback((index: number)=>{
+        setProcessingQueryIndex(index + 1);
+    },[]);
+
+    useEffect(() => {
+        if(results) {
+            setProcessing((Object.entries(results).length > 0) && (processingQueryIndex < queries.length) );
+        }
+    },[processingQueryIndex, queries, results]);
+
     if (isLoading) {
         return <LoadingScreen />;
     }
@@ -157,8 +171,8 @@ function DownloadView() {
                         <Button onClick={() => onDeleteQuery(query)} variant={"ghost"} size={"icon"}><XCircle /></Button>
                     </div>
                 ))}
-                <Button disabled={downloading} type="submit" className="w-full" onClick={onStart}>Start</Button>
-                {results && Object.entries(results).map(([key, result]) => <SearchResultBlock key={key} query={key} results={result} />)}
+                <Button disabled={downloading || processing} type="submit" className="w-full" onClick={onStart}>Start</Button>
+                {results && Object.entries(results).map(([key, result], index) => <SearchResultBlock key={key} query={key} results={result} onProcessingComplete={index === processingQueryIndex? () => handleProcessingComplete(index):undefined}/>)}
             </div>
         </div>
     );

@@ -5,9 +5,11 @@ import { SharedContent } from "@prisma/client";
 import React, { ReactNode, CSSProperties } from 'react';
 import Image from 'next/image';
 import { kv } from '@vercel/kv';
+import ReactMarkdown from "react-markdown";
+import remarkGfm from 'remark-gfm';
 
 export const runtime = "edge"
-export const dynamic = "force-dynamic";
+
 const converter = new Converter({ tables: true, tablesHeaderId: true, emoji: true, ghCodeBlocks:true });
 const parser = Parser();
 
@@ -20,19 +22,34 @@ const commonStyles: CSSProperties = {
 
 export async function GET(req: Request) {
   const {searchParams} = new URL(req.url);
-  const id = searchParams.get("id");
+  
+  const content = `다음은 미국 소재의 매우 초기에 주목할 만한 AI 스타트업 목록입니다:
 
-  if(!id) {
-    throw new Error("id must be specified");
-  }
-  const item = await kv.get<SharedContent>(id);
-  if(!item) {
-    throw new Error(`invalid content for ${id}`);
-  }
-  const {who, content} = item;
+1. **Aragon AI**
+   - **설립 연도**: 2024
+   - **설명**: 생성적 AI 기술을 활용하여 사람들의 문제를 해결하는 솔루션을 제공하는 스타트업. Y Combinator에 합격하여 주목받고 있음.
+   - **링크**: [Yahoo News](https://ca.news.yahoo.com/im-generative-ai-startup-founder-100001815.html)
+
+2. **HelloGov**
+   - **설립 연도**: 2024
+   - **설명**: 정부 문서(비자 등) 신청 과정을 간소화하고 신속하게 처리하는 AI 기반 스타트업. 사용자 친화적인 접근 방식을 통해 신청자의 승인 가능성을 높임.
+   - **링크**: [Business Insider](https://africa.businessinsider.com/local/lifestyle/how-this-ai-startup-is-making-it-easier-to-visit-liveand-work-in-the-united-states/j0wtgsm)
+
+3. **Memorable AI**
+   - **설립 연도**: 2021
+   - **설명**: 마케팅 광고의 효과를 높이기 위해 생성적 AI를 사용하는 스타트업. Reddit에 인수됨.
+   - **링크**: [Bloomberg Law](https://news.bloomberglaw.com/artificial-intelligence/reddit-acquires-generative-ai-startup-memorable-ai)
+
+4. **Leonardo.ai**
+   - **설립 연도**: 2022
+   - **설명**: AI 기반 이미지 생성 스타트업으로, Canva에 인수됨. 다양한 디자인 도구를 제공.
+   - **링크**: [TechPoint](https://techpoint.africa/2024/07/30/canva-acquires-leonardo-ai/)
+
+이 스타트업들은 각각의 독특한 접근 방식과 혁신적인 기술로 주목받고 있으며, AI 분야에서의 성장을 기대할 수 있습니다.`;
+
   console.log("content : ", content);
   try {
-    const title: string = `👋 ${who}님이 Assistant와 대화를 공유합니다.`;
+    const title: string = `👋 ${'david'}님이 Assistant와 대화를 공유합니다.`;
     const htmlContent: string = converter.makeHtml(content||'');
     const reactContent: ReactNode = parser.parse(htmlContent);
 
@@ -50,151 +67,6 @@ export async function GET(req: Request) {
         죄송합니다. 콘텐츠를 불러오는 데 문제가 발생했습니다. 나중에 다시 시도해 주세요.
       </div>
     );
-
-    const renderContent = (content: ReactNode): ReactNode => {
-      if (typeof content === 'string') {
-        return <div style={{ ...commonStyles, flexDirection: 'row', fontSize: '12px' }}>{content}</div>;
-      }
-
-      if (!React.isValidElement(content)) {
-        return null;
-      }
-
-      const elementType = content.type;
-      if (typeof elementType === 'string') {
-        if (elementType === 'table') {
-          return (
-            <div style={{
-              ...commonStyles,
-              width: '100%',
-              fontSize: '10px',
-              marginBottom: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              overflow: 'hidden',
-            }}>
-              {React.Children.map(content.props.children, (tableChild: ReactNode, tableIndex: number) => {
-                if (!React.isValidElement(tableChild)) return null;
-                
-                const childType = tableChild.type;
-                if (typeof childType !== 'string') return null;
-
-                if (childType === 'thead') {
-                  return (
-                    <div key={tableIndex} style={{
-                      ...commonStyles,
-                      backgroundColor: '#4a4a4a',
-                      color: 'white',
-                    }}>
-                      {React.Children.map(tableChild.props.children, (headRow: ReactNode, headRowIndex: number) => {
-                        if (!React.isValidElement(headRow)) return null;
-
-                        return (
-                          <div key={headRowIndex} style={{
-                            display: 'flex',
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            minHeight: '20px',
-                            maxHeight: '30px',
-                          }}>
-                            {React.Children.map(headRow.props.children, (headCell: ReactNode, headCellIndex: number) => {
-                              if (!React.isValidElement(headCell)) return null;
-
-                              return (
-                                <div key={headCellIndex} style={{
-                                  padding: '4px',
-                                  textAlign: 'left',
-                                  flex: 1,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  minWidth: '60px',
-                                  maxWidth: '200px',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }}>
-                                  {headCell.props.children}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                }
-
-                if (childType === 'tbody') {
-                  return (
-                    <div key={tableIndex} style={commonStyles}>
-                      {React.Children.map(tableChild.props.children, (row: ReactNode, rowIndex: number) => {
-                        if (!React.isValidElement(row)) return null;
-
-                        return (
-                          <div key={rowIndex} style={{
-                            display: 'flex',
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            borderBottom: '1px solid #ddd',
-                            minHeight: '40px',
-                            maxHeight: '50px',
-                          }}>
-                            {React.Children.map(row.props.children, (cell: ReactNode, cellIndex: number) => {
-                              if (!React.isValidElement(cell)) return null;
-
-                              return (
-                                <div key={cellIndex} style={{
-                                  padding: '4px',
-                                  flex: 1,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  minWidth: '60px',
-                                  maxWidth: '200px',
-                                  overflow: 'hidden',
-                                }}>
-                                  <div style={{
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    display: 'flex',
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: 'vertical',
-                                  }}>
-                                    {cell.props.children}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                }
-
-                return null;
-              })}
-            </div>
-          );
-        }
-
-        // 다른 HTML 요소들 처리
-        const validElements = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li'];
-        if (validElements.includes(elementType)) {
-          const style = {
-            ...commonStyles,
-            fontSize: elementType.startsWith('h') ? `${18 - parseInt(elementType.slice(1))}px` : '12px',
-            fontWeight: elementType.startsWith('h') ? 'bold' : 'normal',
-          };
-          return React.createElement(
-            'div',
-            { style: { ...style, display: 'flex' } },
-            React.Children.map(content.props.children, child => renderContent(child))
-          );
-        }
-      }
-
-      return null;
-    };
 
     return new ImageResponse(
       (
@@ -229,6 +101,7 @@ export async function GET(req: Request) {
               display: 'flex',
               flexDirection: 'column',
               backgroundColor: 'white',
+              fontSize:'10px',
               borderRadius: '15px',
               padding: '15px',
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
@@ -238,9 +111,8 @@ export async function GET(req: Request) {
               maxHeight: '500px',
               overflowY: 'auto',
             }}>
-              {React.Children.map(reactContent, (child, index) => renderContent(child))}
-              {!React.Children.count(reactContent) && <FallbackContent />}
-            </div>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        </div>
           </div>
           <div style={{
             display: 'flex',
