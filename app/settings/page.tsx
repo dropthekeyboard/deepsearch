@@ -81,7 +81,7 @@ export default function SettingPage() {
                 toast({description: `${deletionScope === "all" ? "모든" : deletionScope === "7days" ? "7일 이상" : "30일 이상"} 데이터 삭제 완료`});
             })
         }
-    }, [db, startClearing, deletionScope]);
+    }, [startClearing, deletionScope, toast]);
 
     return (
         <div className="flex flex-col items-center justify-center p-12 space-y-4">
