@@ -1,8 +1,10 @@
 import { ImageResponse } from '@vercel/og';
 import { Converter } from "showdown";
 import { Parser } from "html-to-react";
+import { SharedContent } from "@prisma/client";
 import React, { ReactNode, CSSProperties } from 'react';
 import Image from 'next/image';
+import { kv } from '@vercel/kv';
 
 export const runtime = "edge"
 export const dynamic = "force-dynamic";
@@ -18,14 +20,20 @@ const commonStyles: CSSProperties = {
 
 export async function GET(req: Request) {
   const {searchParams} = new URL(req.url);
-  const who = searchParams.get("who");
-  const content = searchParams.get("content");
-  const decodedContent = Buffer.from(content as string, 'base64').toString('utf-8');
+  const id = searchParams.get("id");
 
+  if(!id) {
+    throw new Error("id must be specified");
+  }
+  const item = await kv.get<SharedContent>(id);
+  if(!item) {
+    throw new Error("invalid content");
+  }
+  const {who, content} = item;
   console.log("content : ", content);
   try {
     const title: string = `👋 ${who}님이 Assistant와 대화를 공유합니다.`;
-    const htmlContent: string = converter.makeHtml(decodedContent||'');
+    const htmlContent: string = converter.makeHtml(content||'');
     const reactContent: ReactNode = parser.parse(htmlContent);
 
     const FallbackContent = () => (

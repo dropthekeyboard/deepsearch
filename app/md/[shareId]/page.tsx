@@ -15,13 +15,6 @@ interface PageProps {
   };
 }
 
-function encodeBase64UrlSafe(str: string): string {
-  return Buffer.from(str).toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-}
-
 export async function generateMetadata(
   { params }: PageProps,
   parent: ResolvingMetadata
@@ -43,7 +36,6 @@ export async function generateMetadata(
   
   const description = content.substring(0, 200) + (content.length > 200 ? '...' : '');
   const title = `${who}님이 당신과 정보를 공유합니다`;
-  const encodedContent = encodeBase64UrlSafe(content);
   
   return {
     title,
@@ -51,13 +43,13 @@ export async function generateMetadata(
     openGraph: {
       title,
       description,
-      images: [`/api/og/md?who=${encodeURIComponent(who)}&content=${encodedContent}`],
+      images: [`/api/og/md?id=${id}`],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [`/api/og/md?who=${encodeURIComponent(who)}&content=${encodedContent}`],
+      images: [`/api/og/md?id=${id}`],
     },
   };
 }
