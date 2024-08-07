@@ -43,13 +43,13 @@ export async function generateMetadata(
     openGraph: {
       title,
       description,
-      images: [`/api/og/md?who=${encodeURIComponent(who)}&description=${encodeURIComponent(content)}`],
+      images: [`/api/og/md?who=${encodeURIComponent(who)}&content=${encodeURIComponent(content)}`],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [`/api/og/md?who=${encodeURIComponent(who)}&description=${encodeURIComponent(content)}`],
+      images: [`/api/og/md?who=${encodeURIComponent(who)}&content=${encodeURIComponent(content)}`],
     },
   };
 }
