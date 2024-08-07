@@ -20,9 +20,12 @@ export async function GET(req: Request) {
   const {searchParams} = new URL(req.url);
   const who = searchParams.get("who");
   const content = searchParams.get("content");
+  const decodedContent = Buffer.from(content as string, 'base64').toString('utf-8');
+
+  console.log("content : ", content);
   try {
     const title: string = `👋 ${who}님이 Assistant와 대화를 공유합니다.`;
-    const htmlContent: string = converter.makeHtml(content||'');
+    const htmlContent: string = converter.makeHtml(decodedContent||'');
     const reactContent: ReactNode = parser.parse(htmlContent);
 
     const FallbackContent = () => (

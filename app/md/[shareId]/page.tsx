@@ -15,6 +15,12 @@ interface PageProps {
   };
 }
 
+function encodeBase64UrlSafe(str: string): string {
+  return Buffer.from(str).toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
 
 export async function generateMetadata(
   { params }: PageProps,
@@ -29,27 +35,29 @@ export async function generateMetadata(
     };
   }
 
-
   const { who, content, view, id } = shared;
   if (view % 2 === 0) {
     await prisma?.sharedContent.upsert({ create: { ...shared, id: cuid2.createId() }, where: { id }, update: { ...shared } });
   }
   await kv.set<SharedContent>(params.shareId, { ...shared, view: view + 1 });
+  
   const description = content.substring(0, 200) + (content.length > 200 ? '...' : '');
   const title = `${who}님이 당신과 정보를 공유합니다`;
+  const encodedContent = encodeBase64UrlSafe(content);
+  
   return {
     title,
     description,
     openGraph: {
       title,
       description,
-      images: [`/api/og/md?who=${encodeURIComponent(who)}&content=${encodeURIComponent(content)}`],
+      images: [`/api/og/md?who=${encodeURIComponent(who)}&content=${encodedContent}`],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [`/api/og/md?who=${encodeURIComponent(who)}&content=${encodeURIComponent(content)}`],
+      images: [`/api/og/md?who=${encodeURIComponent(who)}&content=${encodedContent}`],
     },
   };
 }
