@@ -69,13 +69,13 @@ function RelevantSummaryItem({ source, chunks, searchResults }: RelevantSummaryI
         <Card className="w-full">
             <CardContent className="pt-6 space-y-4">
                 <div className="flex flex-row justify-between items-center w-full">
-                    <div className="">
-                        <SearchItemMin data={source} />
-                    </div>
                     <div className="text-center">
                         <p className="text-sm font-medium text-muted-foreground">Relevant</p>
                         <p className="text-sm font-medium text-muted-foreground">Contents</p>
                         <p className="text-2xl font-bold">{chunks.length}</p>
+                    </div>
+                    <div className="">
+                        <SearchItemMin data={source} />
                     </div>
                 </div>
                 <ScrollArea className="h-64">
@@ -120,8 +120,8 @@ function ResearchView() {
                 if (tokenCount > (64 * 1024)) {
                     toast({
                         description: <Markdown>{`context information is too large  : ${tokenCount} tokens. *`}</Markdown>,
-                        variant:'destructive',
-                        title:'Too large information'
+                        variant: 'destructive',
+                        title: 'Too large information'
                     })
                     setTopK(prev => {
                         if (prev > 10) {

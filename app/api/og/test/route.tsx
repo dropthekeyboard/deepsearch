@@ -18,8 +18,18 @@ const commonStyles: CSSProperties = {
 
 export async function GET(req: Request) {
   const {searchParams} = new URL(req.url);
-  const who = searchParams.get("who");
-  const content = searchParams.get("content");
+  const who = 'davidlee';
+  const content = `아래는 OpenAI와 관련된 주요 리스크를 출처와 함께 테이블로 정리한 것입니다.
+
+| 리스크               | 설명                                                                                     | 출처                                                                                     |
+|---------------------|------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|
+| 재정적 손실          | OpenAI는 최근 몇 년 동안 막대한 자금을 투자받았지만, 여전히 수익을 창출하지 못하고 있으며, 이는 재정적 지속 가능성에 대한 우려를 낳고 있습니다. | [Fortune](https://fortune.com/2024/08/02/google-character-ai-founders-microsoft-inflection-amazon-adept/) |
+| 경쟁 심화            | AI 분야에서의 경쟁이 치열해지고 있으며, 대형 기술 기업들이 AI 스타트업을 인수하거나 인재를 영입하는 경향이 있습니다. | [Fortune](https://fortune.com/2024/08/02/google-character-ai-founders-microsoft-inflection-amazon-adept/) |
+| 규제 및 법적 문제    | AI 기술의 발전과 함께 규제 기관의 감시가 강화되고 있으며, OpenAI는 데이터 사용 및 개인정보 보호와 관련된 법적 문제에 직면할 수 있습니다. | [Ars Technica](https://arstechnica.com/tech-policy/2024/08/us-probes-nvidias-acquisition-of-israeli-ai-startup/) |
+| 기술적 한계          | OpenAI의 모델이 인공지능의 일반화된 지능(AGI)에 도달하는 데 필요한 기술적 진전을 이루지 못할 경우, 시장에서의 경쟁력에 부정적인 영향을 미칠 수 있습니다. | [Fortune](https://fortune.com/2024/08/02/google-character-ai-founders-microsoft-inflection-amazon-adept/) |
+| 사회적 비판          | OpenAI의 기술이 잘못 사용되거나 부적절한 결과를 초래할 경우, 사회적 비판과 반발을 받을 수 있습니다. | [Fortune](https://fortune.com/2024/08/02/google-character-ai-founders-microsoft-inflection-amazon-adept/) |
+
+이 테이블은 OpenAI와 관련된 리스크를 요약하여 보여줍니다. 각 리스크에 대한 설명과 함께 출처를 명시하였습니다.`;
   try {
     const title: string = `👋 ${who}님이 Assistant와 대화를 공유합니다.`;
     const htmlContent: string = converter.makeHtml(content||'');

@@ -41,6 +41,10 @@ const useWebSearchResults = () => {
 
     const deleteResult = useCallback(async (id: string): Promise<void> => {
         try {
+            const toDelete = await db.webSearchResults.get(id);
+            if(toDelete) {
+                await db.vectorIndex.where("id").anyOf(toDelete.chunks).delete();
+            }
             await db.webSearchResults.delete(id);
         } catch (err: any) {
             console.error(`Failed to delete result: ${err.message}`);

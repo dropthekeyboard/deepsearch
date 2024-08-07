@@ -7,10 +7,11 @@ import { chopText, cleanText, removePath, removeUrl } from "@/lib/utils";
 import { IndexedChunkData, WebSearchResult } from "@/types";
 import crypto from 'crypto';
 import { format } from 'date-fns';
-import { AlertCircle, Ban, Calendar, CheckCircle, Cloud, Loader2, Search } from "lucide-react";
+import { AlertCircle, Ban, Calendar, CheckCircle, Cloud, Loader2, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Progress } from "./ui/progress";
 import { ScrollArea } from "./ui/scroll-area";
+import { Button } from "./ui/button";
 
 const BATCH_SIZE = 10;
 const DELAY_BETWEEN_BATCHES = 100;
@@ -40,7 +41,8 @@ function getUniqueId(veryLongJson: string): number {
 
 
 function SearchItemMin({ data }: SearchItemProps) {
-    const { source, description, title, url, contentDate, searchDate, query } = data;
+    const { source, description, title, url, contentDate, searchDate, query, id } = data;
+    const { deleteResult } = useWebSearchResults();
 
     const formatDate = (date: Date | null) => {
         if (!date) return 'N/A';
@@ -49,10 +51,13 @@ function SearchItemMin({ data }: SearchItemProps) {
 
     return (
         <div className="flex flex-col pt-4 mb-4 shadow-md rounded-lg hover:shadow-lg transition-shadow duration-300">
-            <a href={url} target="_blank" rel="noopener noreferrer" className="group">
-                <div className="text-lg font-semibold group-hover:underline mb-1">{title}</div>
-                <div className="text-sm mb-2">{source}</div>
-            </a>
+            <div className="flex flex-row justify-between">
+                <a href={url} target="_blank" rel="noopener noreferrer" className="group">
+                    <div className="text-lg font-semibold group-hover:underline mb-1">{title}</div>
+                </a>
+                <Button onClick={() => deleteResult(id)} variant={"ghost"} size={'icon'}><Trash2 className="w-6 h-6" /></Button>
+            </div>
+            <div className="text-sm mb-2">{source}</div>
             <ScrollArea className="text-sm mb-2 h-24">{description}</ScrollArea>
             {/* Dates display */}
             <div className="flex justify-between items-center text-xs mb-2">
@@ -162,7 +167,7 @@ function SearchItem({ data, pong }: SearchItemProps) {
                                 .filter(c => c.length < MAX_LENGTH)
                                 .filter(c => c.length > MIN_LENGTH);
                             const totalChunks = chunks.length;
-                            const chunkIds:number[] = [];
+                            const chunkIds: number[] = [];
 
                             for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
                                 await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
