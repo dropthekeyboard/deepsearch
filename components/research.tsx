@@ -11,7 +11,7 @@ import { encodingForModel } from "js-tiktoken";
 import { MessageCircle } from "lucide-react";
 import React, { useCallback, useEffect, useState } from 'react';
 import Markdown from "react-markdown";
-import useSWRImmutable from "swr/immutable";
+import useSWR from "swr";
 import ChatUI from "./chat";
 import { LoadingScreen } from "./loading";
 import { SearchItemMin } from "./search-result";
@@ -62,20 +62,21 @@ interface RelevantSummaryItemProps {
     source: WebSearchResult,
     chunks: IndexedChunkData[];
     searchResults: SearchResult[];
+    onDelete?: (id:string) => void;
 }
 
-function RelevantSummaryItem({ source, chunks, searchResults }: RelevantSummaryItemProps) {
+function RelevantSummaryItem({ source, chunks, searchResults, onDelete }: RelevantSummaryItemProps) {
     return (
         <Card className="w-full">
             <CardContent className="pt-6 space-y-4">
-                <div className="flex flex-row justify-between items-center w-full">
+                <div className="flex flex-row justify-between items-center w-full space-x-2">
                     <div className="text-center">
                         <p className="text-sm font-medium text-muted-foreground">Relevant</p>
                         <p className="text-sm font-medium text-muted-foreground">Contents</p>
                         <p className="text-2xl font-bold">{chunks.length}</p>
                     </div>
                     <div className="">
-                        <SearchItemMin data={source} />
+                        <SearchItemMin data={source} onDelete={onDelete} />
                     </div>
                 </div>
                 <ScrollArea className="h-64">
@@ -159,7 +160,7 @@ function ResearchView() {
         return srcChunksMap;
     }, [search, getResultById, topK]);
 
-    const { data, isLoading } = useSWRImmutable(searchQuery && { searchQuery, topK }, async () => await fetchSearchResults(searchQuery));
+    const { data, isLoading, mutate } = useSWR(searchQuery && { searchQuery, topK }, async () => await fetchSearchResults(searchQuery));
     useEffect(() => {
         if (data && !isLoading) {
             // convert data into markdown table format
@@ -181,6 +182,11 @@ function ResearchView() {
         const { target: { value } } = e;
         setSearchQuery(value);
     }, []);
+
+    const handleDelete = useCallback(async () => {
+        await mutate();
+        toast({description:"item is deleted"});
+    }, [toast,mutate]);
 
     if (isVsLoading) {
         return <LoadingScreen />
@@ -208,6 +214,7 @@ function ResearchView() {
                                 source={source.source}
                                 chunks={source.chunks}
                                 searchResults={source.searchResults}
+                                onDelete={handleDelete}
                             />
                         ))
                 ) : (

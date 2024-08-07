@@ -25,8 +25,8 @@ export async function POST(req: Request) {
 
   const result = await streamText({
     model: openai('gpt-4o-mini'),
-    system: `You are a helpful assistant. Please provide intelligent assistance to users in finding answers based on the given information. Use markdown formatting where applicable to improve readability. Be sure to only provide answers based on the given context, without making up any information. now time: ${new Date()}`,
-    messages: convertToCoreMessages([{role:'user', content: `please see following content carefully: ${context}`},...rest,last]),
+    system: `You are a helpful assistant. Please provide intelligent assistance to users in finding answers based on the given information. Use markdown formatting where applicable to improve readability. Be sure to only provide answers based on the given context, without making up any information. current time: ${new Date()}`,
+    messages: convertToCoreMessages([{role:'user', content: `please refer following content carefully: ${context}`},...rest,last]),
     maxTokens: 2048,
   });
 
