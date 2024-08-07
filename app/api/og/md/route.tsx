@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   }
   const item = await kv.get<SharedContent>(id);
   if(!item) {
-    throw new Error("invalid content");
+    throw new Error(`invalid content for ${id}`);
   }
   const {who, content} = item;
   console.log("content : ", content);

@@ -28,9 +28,9 @@ export async function generateMetadata(
     };
   }
 
-  const { who, content, view, id } = shared;
+  const { who, content, view } = shared;
   if (view % 2 === 0) {
-    await prisma?.sharedContent.upsert({ create: { ...shared, id: cuid2.createId() }, where: { id }, update: { ...shared } });
+    await prisma?.sharedContent.upsert({ create: { ...shared, id: cuid2.createId() }, where: { id:params.shareId }, update: { ...shared } });
   }
   await kv.set<SharedContent>(params.shareId, { ...shared, view: view + 1 });
   
@@ -43,13 +43,13 @@ export async function generateMetadata(
     openGraph: {
       title,
       description,
-      images: [`/api/og/md?id=${id}`],
+      images: [`/api/og/md?id=${params.shareId}`],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [`/api/og/md?id=${id}`],
+      images: [`/api/og/md?id=${params.shareId}`],
     },
   };
 }
