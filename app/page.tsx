@@ -9,10 +9,10 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-between p-24">
       <WorkerProvider>
-        <Tabs className="w-[70vw]" defaultValue="download">
+        <Tabs className="w-[70vw]" defaultValue="research">
           <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="download">Download</TabsTrigger>
             <TabsTrigger value="research">Research</TabsTrigger>
+            <TabsTrigger value="download">Download</TabsTrigger>
           </TabsList>
           <TabsContent value="research">
             <ResearchView />
