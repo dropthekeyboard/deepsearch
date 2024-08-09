@@ -1,11 +1,9 @@
 "use client";
-import { DownloadView } from "@/components/download";
-import ResearchView from "@/components/research";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkerProvider } from "@/context/WorkerContext";
-import { Search, Download } from "lucide-react";
+import { Search, Upload } from "lucide-react";
 
-export default function Home() {
+export default function FileChat() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-between p-24">
       <WorkerProvider>
@@ -15,16 +13,14 @@ export default function Home() {
               <Search size={16} />
               RESEARCH
             </TabsTrigger>
-            <TabsTrigger value="download" className="flex items-center gap-2">
-              <Download size={16} />
-              DOWNLOAD
+            <TabsTrigger value="add" className="flex items-center gap-2">
+              <Upload size={16} />
+              ADD FILES
             </TabsTrigger>
           </TabsList>
           <TabsContent value="research">
-            <ResearchView />
           </TabsContent>
-          <TabsContent value="download">
-            <DownloadView />
+          <TabsContent value="add">
           </TabsContent>
         </Tabs>
       </WorkerProvider>
