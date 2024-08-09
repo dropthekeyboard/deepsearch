@@ -46,7 +46,7 @@ function AppBar() {
                         </SheetContent>
                     </Sheet>
                     <a href="/" className="text-xl font-bold flex flex-row items-center space-x-2">
-                        Deep Search<Logo />
+                    <Logo />Deep Search
                     </a>
                 </div>
 
