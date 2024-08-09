@@ -84,6 +84,7 @@ const useWebSearchResults = () => {
                 .where('id')
                 .anyOf(chunkIdsToDelete)
                 .delete();
+
         } else {
             // Delete all data
             await db.vectorIndex.clear();

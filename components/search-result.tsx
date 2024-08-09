@@ -12,11 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Progress } from "./ui/progress";
 import { ScrollArea } from "./ui/scroll-area";
 import { Button } from "./ui/button";
-
-const BATCH_SIZE = 10;
-const DELAY_BETWEEN_BATCHES = 100;
-const MAX_LENGTH = 5000;
-const MIN_LENGTH = 100;
+import { useClientConfig } from "@/hooks/use-client-config";
 
 interface SearchItemProps {
     data: WebSearchResult;
@@ -106,11 +102,12 @@ async function fetchPlainTextContentEF(url: string): Promise<string | null> {
 function SearchItem({ data, pong }: SearchItemProps) {
     const [error, setError] = useState<any>();
     const [item, setItem] = useState<WebSearchResult | null>(null);
-    const { add, embed, isLoading } = useVectorSearch();
+    const { add, embed, isLoading, invalidate } = useVectorSearch();
     const [indexingProgress, setIndexingProgress] = useState(0);
     const { ready, getResultById, upsertResult } = useWebSearchResults();
     const [retrieving, startRetrieval] = useAsyncTransition();
     const [indexing, startIndexing] = useAsyncTransition();
+    const {config, isLoading:isConfigLoading } = useClientConfig();
 
     useEffect(() => {
         if (data && ready && !item) {
@@ -163,10 +160,11 @@ function SearchItem({ data, pong }: SearchItemProps) {
                 });
             }
         }
-    }, [pong, isLoading, item, embed, add, retrieving, startRetrieval]);
+    }, [pong, isLoading, item, retrieving, startRetrieval]);
 
     useEffect(() => {
-        if (pong && !isLoading && item) {
+        if (pong && !isLoading && item && !isConfigLoading && config) {
+            const {maxChunkLength, minChunkLength, indexingBatchSize} = config;
             const { isIndexed, content, isRetrieved } = item;
             if (!isIndexed && !indexing && isRetrieved) {
                 startIndexing(async () => {
@@ -175,14 +173,13 @@ function SearchItem({ data, pong }: SearchItemProps) {
                             const chunks = chopText(cleanText(removePath(removeUrl(content))), 4, 1)
                                 .map(cleanText)
                                 .filter(Boolean)
-                                .filter(c => c.length < MAX_LENGTH)
-                                .filter(c => c.length > MIN_LENGTH);
+                                .filter(c => c.length < maxChunkLength)
+                                .filter(c => c.length > minChunkLength);
                             const totalChunks = chunks.length;
                             const chunkIds: number[] = [];
 
-                            for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
-                                await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
-                                const batch = chunks.slice(i, i + BATCH_SIZE);
+                            for (let i = 0; i < totalChunks; i += indexingBatchSize) {
+                                const batch = chunks.slice(i, i + indexingBatchSize);
                                 await Promise.all(batch.map(async (chunk) => {
                                     const embedding = await embed(chunk);
                                     const { id: parentId, url, source } = item;
@@ -192,8 +189,9 @@ function SearchItem({ data, pong }: SearchItemProps) {
                                     chunkIds.push(id);
                                     await add({ id, name }, embedding);
                                 }));
-                                setIndexingProgress(Math.min(((i + BATCH_SIZE) / totalChunks) * 100, 100));
+                                setIndexingProgress(Math.min(((i + indexingBatchSize) / totalChunks) * 100, 100));
                             }
+                            await invalidate();
                             setItem(prev => prev ? { ...prev, isIndexed: true, chunks: chunkIds } : prev);
                         } catch (e) {
                             console.log("", e);
@@ -205,7 +203,7 @@ function SearchItem({ data, pong }: SearchItemProps) {
             // try retrieva the content
 
         }
-    }, [pong, isLoading, item, embed, add, indexing, startIndexing]);
+    }, [pong, isLoading, item, embed, add, indexing, startIndexing, invalidate, isConfigLoading, config]);
 
     const hasNoContent = useCallback(() => {
 
@@ -334,6 +332,8 @@ function SearchItem({ data, pong }: SearchItemProps) {
 function SearchResultBlock({ results, query, onProcessingComplete }: { results: WebSearchResult[], query: string, onProcessingComplete?: () => void }) {
     const [processingComplete, setProcessingComplete] = useState(false);
     const [processing, setProcessing] = useState(0);
+    const [openOverride, setOpenOverride] = useState<boolean>(false);
+    const [value,setValue] = useState(1);
 
     const handlePong = useCallback((index: number) => {
         console.log(`Item ${index} completed`);
@@ -344,6 +344,7 @@ function SearchResultBlock({ results, query, onProcessingComplete }: { results: 
 
     useEffect(() => {
         if (processingComplete) {
+            setOpenOverride(false);
             onProcessingComplete?.();
         }
     }, [processingComplete, onProcessingComplete]);
@@ -351,6 +352,14 @@ function SearchResultBlock({ results, query, onProcessingComplete }: { results: 
     useEffect(() => {
         setProcessingComplete(processing >= results.length);
     }, [processing, results]);
+
+    useEffect(() => {
+        let v = Boolean(onProcessingComplete);
+        if(openOverride) {
+            v = !v;
+        }
+        setValue(v? 0:1);
+    },[onProcessingComplete, openOverride])
 
     const progressPercentage = (processing / results.length) * 100;
 
@@ -364,9 +373,10 @@ function SearchResultBlock({ results, query, onProcessingComplete }: { results: 
                     : ` (${processing} of ${results.length} processed)`}
             </div>
             <Progress value={progressPercentage} className="mb-4" />
-            <Accordion type="single" collapsible className="w-full">
+            <Accordion type="single" collapsible className="w-full" value={value.toString()}>
                 <AccordionItem value="0">
-                    <AccordionTrigger></AccordionTrigger>
+                    <AccordionTrigger onClick={() => setOpenOverride(prev => !prev)}>
+                    </AccordionTrigger>
                     <AccordionContent>
                         {results.map((item, index) => (
                             <SearchItem

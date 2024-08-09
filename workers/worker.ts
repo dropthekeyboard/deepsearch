@@ -4,12 +4,13 @@ import { getVectorSearch } from "@/lib/vector-search";
 import { AsyncFunction, WorkerMessage } from "@/types";
 
 
-const {add, save, search, embed, isLoaded, ensureLoad} = await getVectorSearch();
+const {add, save, search, embed, isLoaded, ensureLoad, invalidate} = await getVectorSearch();
 
 const API: Record<string, AsyncFunction> = {
     hello,
     add,
     search,
+    invalidate,
     embed,
     save,
     isLoaded,

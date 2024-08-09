@@ -10,12 +10,13 @@ interface UseVectorSearchResult {
     search: (query: string | number[], topK?: number) => Promise<SearchResult[]>;
     add: (object: VectorObject, embedding?: number[]) => Promise<void>;
     embed: (v: string) => Promise<number[]>;
+    invalidate: () => Promise<void>;
     isLoading: boolean;
     size: number;
 }
 
 export function useVectorSearch(): UseVectorSearchResult {
-    const { search, add, embed, isLoaded, ensureLoad } = useWorker<VectorSearchAPI>();
+    const { search, add, embed, isLoaded, ensureLoad, invalidate: invalidateIndex } = useWorker<VectorSearchAPI>();
     const [isLoading, setIsLoading] = useState(true);
     const [size, setSize] = useState<number>(0);
 
@@ -45,6 +46,11 @@ export function useVectorSearch(): UseVectorSearchResult {
         }
     }, [isLoaded, ensureLoad]);
 
+    const invalidate = useCallback(async () => {
+        setIsLoading(true);
+        await invalidateIndex();
+    }, []);
+
     const wrappedSearch = useCallback(async (query: string | number[], topK?: number) => {
         if (isLoading) {
             throw new Error('VectorSearch is still loading');
@@ -70,6 +76,7 @@ export function useVectorSearch(): UseVectorSearchResult {
         search: wrappedSearch,
         add: wrappedAdd,
         embed: wrappedEmbed,
+        invalidate,
         isLoading,
         size,
     };

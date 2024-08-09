@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { useToast } from "@/components/ui/use-toast";
 import { useAsyncTransition } from "@/hooks/use-async";
+import { useClientConfig } from "@/hooks/use-client-config";
 import { useVectorSearch } from "@/hooks/use-vector-search";
 import useWebSearchResults from "@/hooks/use-web-search";
 import { WebSearchResult } from "@/types";
 import { Trash2, XCircle } from "lucide-react";
 import { ChangeEvent, useCallback, useEffect, useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
 
 
 type Downloader = (query: string, count: number, periodInDays?: number) => Promise<WebSearchResult[] | Error>
@@ -25,11 +26,12 @@ const Downloaders: { [key: string]: Downloader } = {
 };
 
 function DownloadView() {
+    const {config, isLoading: isConfigLoading} = useClientConfig();
     const [results, setResults] = useState<{ [key: string]: WebSearchResult[] }>();
     const [queries, setQueries] = useState<string[]>([]);
     const [query, setQuery] = useState<string>("");
-    const [count, setCount] = useState(100);
-    const [searchPeriod, setSearchPeriod] = useState<number>(7);
+    const [count, setCount] = useState(30);
+    const [searchPeriod, setSearchPeriod] = useState<number>(3);
     const [downloading, startDownload] = useAsyncTransition();
     const { isLoading, size } = useVectorSearch();
     const { ready, deleteSearchWithScope } = useWebSearchResults();
@@ -115,11 +117,9 @@ function DownloadView() {
             }
         }
     }, [deleteSearchWithScope, ready, toast]);
-
     useEffect(() => {
-        if (!isLoading && toast && size) {
-            console.log("",size, process.env.INDEX_COUNT_THRESHOLD);
-            if (size > Number.parseInt(process.env.INDEX_COUNT_THRESHOLD||"5000")) {
+        if (!isLoading && toast && size && !isConfigLoading) {
+            if (size > (config? config.maxIndexCount : 5000)) {
                 toast({
                     variant: 'destructive',
                     description: "Too many contents may lead to a poor experience. Please consider deleting old data.",
@@ -132,17 +132,17 @@ function DownloadView() {
                 });
             }
         }
-    }, [isLoading, size, toast, handleDeleteOldContents]);
+    }, [isLoading, size, toast, handleDeleteOldContents, isConfigLoading, config]);
 
-    const handleProcessingComplete = useCallback((index: number)=>{
+    const handleProcessingComplete = useCallback((index: number) => {
         setProcessingQueryIndex(index + 1);
-    },[]);
+    }, []);
 
     useEffect(() => {
-        if(results) {
-            setProcessing((Object.entries(results).length > 0) && (processingQueryIndex < queries.length) );
+        if (results) {
+            setProcessing((Object.entries(results).length > 0) && (processingQueryIndex < queries.length));
         }
-    },[processingQueryIndex, queries, results]);
+    }, [processingQueryIndex, queries, results]);
 
     if (isLoading) {
         return <LoadingScreen />;
@@ -172,7 +172,7 @@ function DownloadView() {
                     </div>
                 ))}
                 <Button disabled={downloading || processing} type="submit" className="w-full" onClick={onStart}>Start</Button>
-                {results && Object.entries(results).map(([key, result], index) => <SearchResultBlock key={key} query={key} results={result} onProcessingComplete={index === processingQueryIndex? () => handleProcessingComplete(index):undefined}/>)}
+                {results && Object.entries(results).map(([key, result], index) => <SearchResultBlock key={key} query={key} results={result} onProcessingComplete={index === processingQueryIndex ? () => handleProcessingComplete(index) : undefined} />)}
             </div>
         </div>
     );

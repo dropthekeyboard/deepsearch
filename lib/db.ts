@@ -13,7 +13,7 @@ export class LocalDatabase extends Dexie {
         this.version(1).stores({
             cachedObjects: 'id, syncedAt', // Generic cache table schema
             webSearchResults: "id, isIndexed, isSaved, searchDate",
-            vectorIndex: "id",
+            vectorIndex: "id, createdAt",
         });
     }
 }

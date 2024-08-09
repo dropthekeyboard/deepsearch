@@ -1,13 +1,12 @@
+import { VectorObject } from "@/hooks/use-client-vector-search";
+import { AsyncAPI } from "@/types";
 import {
-  initializeModel,
-  SearchResult,
   EmbeddingIndex,
   getEmbedding,
+  initializeModel,
+  SearchResult,
 } from "client-vector-search";
-import { AsyncAPI, AsyncFunction, CachedObject } from "@/types";
-import { VectorObject } from "@/hooks/use-client-vector-search";
 import { db } from "./db";
-import _ from "lodash";
 
 class InitializedModel {
   private initialized: boolean = false;
@@ -32,6 +31,7 @@ class InitializedModel {
 }
 interface VectorObjectWithEmbedding extends VectorObject {
   embedding: number[];
+  createdAt: number;
 }
 
 class PersistVectorSearch {
@@ -51,12 +51,9 @@ class PersistVectorSearch {
       return;
     }
 
-    await db.vectorIndex.each(async (index) => {
-      this.objects.push(index);
-    });
-
+    this.objects = await db.vectorIndex.toArray();
     console.log("objects:", this.objects.length);
-    this.index = new EmbeddingIndex(this.objects);
+    this.index = new EmbeddingIndex(this.objects.map(({id, name, embedding})=> ({id,name,embedding})));
     this.objects = [];
     this.loaded = true;
   }
@@ -66,6 +63,11 @@ class PersistVectorSearch {
       this.loadPromise = this.load();
     }
     return this.loadPromise;
+  }
+
+  async invalidate(): Promise<void> {
+    this.loadPromise = null;
+    this.loaded = false;
   }
 
   public static async getInstance(): Promise<PersistVectorSearch> {
@@ -82,6 +84,7 @@ class PersistVectorSearch {
     return PersistVectorSearch.instancePromise;
   }
 
+
   async add(object: VectorObject, embedding?: number[]): Promise<void> {
     await this.ensureLoad();
     if (!this.index) {
@@ -89,9 +92,7 @@ class PersistVectorSearch {
     }
 
     const embeddingValue = embedding || (await getEmbedding(object.name));
-    const obj = { ...object, embedding: embeddingValue };
-    this.index.add(obj);
-    this.objects.push(obj);
+    const obj: VectorObjectWithEmbedding = { ...object, embedding: embeddingValue,  createdAt: Date.now()};
     await db.vectorIndex.put(obj);
   }
 
@@ -124,6 +125,7 @@ interface VectorSearchAPI extends AsyncAPI {
   search(query: string | number[], topK?: number): Promise<SearchResult[]>;
   add(object: VectorObject, embedding?: number[]): Promise<void>;
   embed(v: string): Promise<number[]>;
+  invalidate(): Promise<void>;
   ensureLoad(): Promise<void>;
   isLoaded(): Promise<boolean>;
 }
@@ -133,10 +135,12 @@ function getVectorSearch(): Promise<VectorSearchAPI> {
     search: instance.search.bind(instance),
     add: instance.add.bind(instance),
     embed: instance.embed.bind(instance),
+    invalidate: instance.invalidate.bind(instance),
     ensureLoad: instance.ensureLoad.bind(instance),
     isLoaded: instance.isLoaded.bind(instance),
   }));
 }
 
 export { getVectorSearch };
-export type { VectorSearchAPI, VectorObjectWithEmbedding };
+export type { VectorObjectWithEmbedding, VectorSearchAPI };
+
