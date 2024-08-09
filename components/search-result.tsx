@@ -58,7 +58,7 @@ function SearchItemMin({ data, onDelete }: SearchItemProps) {
             console.log("", e);
         }
 
-    }, [deleteResult,id, onDelete]);
+    }, [deleteResult, id, onDelete]);
 
     return (
         <div className="flex flex-col pt-4 mb-4 shadow-md rounded-lg hover:shadow-lg transition-shadow duration-300">
@@ -343,34 +343,42 @@ function SearchResultBlock({ results, query, onProcessingComplete }: { results: 
     }, [results]);
 
     useEffect(() => {
-        if(processingComplete) {
+        if (processingComplete) {
             onProcessingComplete?.();
         }
-    },[processingComplete, onProcessingComplete]);
+    }, [processingComplete, onProcessingComplete]);
 
-     useEffect(() => {
+    useEffect(() => {
         setProcessingComplete(processing >= results.length);
-     }, [processing, results]);
+    }, [processing, results]);
 
     const progressPercentage = (processing / results.length) * 100;
 
     return (
         <div className="max-w-3xl mx-auto p-4">
-            <h2 className="text-2xl font-bold mb-4">Search Results for {query}</h2>
-            <p className="mb-4 text-sm">
+            <div className="text-2xl font-bold mb-4">Search Results for {query}</div>
+            <div className="mb-4 text-sm">
                 {results.length} results found
                 {processingComplete
                     ? " (All items processed)"
                     : ` (${processing} of ${results.length} processed)`}
-            </p>
+            </div>
             <Progress value={progressPercentage} className="mb-4" />
-            {results.map((item, index) => (
-                <SearchItem
-                    key={index}
-                    data={item}
-                    pong={(processing === index) && onProcessingComplete ? () => handlePong(index) : undefined}
-                />
-            ))}
+            <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="0">
+                    <AccordionTrigger></AccordionTrigger>
+                    <AccordionContent>
+                        {results.map((item, index) => (
+                            <SearchItem
+                                key={index}
+                                data={item}
+                                pong={(processing === index) && onProcessingComplete ? () => handlePong(index) : undefined}
+                            />
+                        ))}
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+
         </div>
     );
 }
