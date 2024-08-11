@@ -13,6 +13,7 @@ import { Progress } from "./ui/progress";
 import { ScrollArea } from "./ui/scroll-area";
 import { Button } from "./ui/button";
 import { useClientConfig } from "@/hooks/use-client-config";
+import { Badge } from "./ui/badge";
 
 interface SearchItemProps {
     data: WebSearchResult;
@@ -73,7 +74,7 @@ function SearchItemMin({ data, onDelete }: SearchItemProps) {
                     <span>Content: {formatDate(contentDate)}</span>
                 </div>
                 <div className="flex flex-col space-y-2">
-                    <div className="font-light text-xs">{`"${query}"`}</div>
+                    <div className="font-light text-xs font-mono w-fit max-w-36 border rounded-sm p-1">{query}</div>
                     <div className="flex items-center">
                         <Search className="w-4 h-4 mr-1" />
                         <span>Searched: {formatDate(searchDate)}</span>

@@ -75,7 +75,7 @@ function RelevantSummaryItem({ source, chunks, searchResults, onDelete }: Releva
                         <p className="text-sm font-medium text-muted-foreground">Contents</p>
                         <p className="text-2xl font-bold">{chunks.length}</p>
                     </div>
-                    <div className="">
+                    <div className="flex-grow">
                         <SearchItemMin data={source} onDelete={onDelete} />
                     </div>
                 </div>
